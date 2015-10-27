@@ -127,8 +127,8 @@ public class Bot implements IMMessageListener {
             if (args.length > 0) {
                 // first word is the command name
                 String cmd = args[0];
-                
                 try {
+                    System.out.println(cmd);
                 	final BotCommand command = this.cmdsAndAliases.get(cmd);
                     if (command != null) {
                     	if (isAuthenticationNeeded()) {
@@ -145,7 +145,7 @@ public class Bot implements IMMessageListener {
                     		command.executeCommand(Bot.this, chat, msg, s, args);
                     	}
                     } else {
-                        this.chat.sendMessage(s.getNickname() + " did you mean me? Unknown command '" + cmd
+                        this.chat.sendMessage(s.getNickname() + " did you mean me? Unknown command" + cmd
                                 + "'\nUse '" + this.commandPrefix + " help' to get help!");
                     }
                 } catch (Exception e) {
