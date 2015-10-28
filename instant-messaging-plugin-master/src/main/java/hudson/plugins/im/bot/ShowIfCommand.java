@@ -61,4 +61,27 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
         return "detailed history";
     }
 
+    // sub query priavate funcitons
+    /*private Collection<AbstractBuild<?, ?>> userFilter(Collection<AbstractBuild<?,?>> builds, String username) {
+     *
+     *      retun new Collection<AbstractBuild<?,?>>();
+     *}
+     *
+     *private Collection<AbstractBuild<?, ?>> dateFilter(Collection<AbstractBuild<?,?>> builds, Datetime dt, char op) {
+     *     // *.getTime() might be a thing
+     *      retun new Collection<AbstractBuild<?,?>>();
+     *}
+     *
+     *private Collection<AbstractBuild<?, ?>> jobFilter(Collection<AbstractBuild<?,?>> builds, int job, char op) {
+     *
+     *      retun new Collection<AbstractBuild<?,?>>();
+     *}
+     *
+     *private Collection<AbstractBuild<?, ?>> buildFilter(Collection<AbstractBuild<?,?>> builds, int n) {
+     *      // truncate builds
+     *
+     *      retun new Collection<AbstractBuild<?,?>>();
+     *}
+     *
+     */
 }

@@ -22,7 +22,7 @@ import hudson.plugins.im.tools.MessageHelper;
 public class OverviewCommand extends AbstractMultipleJobCommand {
 	
 	public final String OVERVIEW = "overview";
-	public final String LINE_BREAK = "/n";
+	public final String LINE_BREAK = "\n";
 
 	@Override
 	public Collection<String> getCommandNames() {
@@ -38,7 +38,7 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
 		String projectName = project.getFullDisplayName();
         msg.append(projectName);
         int spacesNum = projectName.length();
-        StringBuilder spaces = new StringBuilder();
+        StringBuilder spaces = new StringBuilder("  ");
         for (int i=0; i < spacesNum; i++) {
         	spaces.append(" ");
         }
@@ -73,6 +73,8 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
         		i++;
         	}
         	// status information
+        	msg.append(LINE_BREAK);
+			msg.append(spaces.toString());
         	msg.append("Last Build: ").append(lastBuild.getNumber()).append(" (")
         	.append(lastBuild.getTimestampString()).append(" ago): ").append(lastBuild.getResult());
         	msg.append(LINE_BREAK);

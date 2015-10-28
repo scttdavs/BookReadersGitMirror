@@ -24,11 +24,6 @@ public class OverviewCommandTest {
 	
 	private final Pattern percentagePattern = Pattern.compile("\\D(\\d+)[%]"); 
 	
-//	@Test
-//	public void sampleTest() {
-//		
-//	}
-	
 	@Test
 	public void testNoJobFound() {
 	    JobProvider jobProvider = mock(JobProvider.class);
@@ -46,7 +41,7 @@ public class OverviewCommandTest {
 	public void testOverview() throws Exception {
 		
 		FreeStyleBuild build = mock(FreeStyleBuild.class);
-		when(build.getUrl()).thenReturn("job/foo/32/");
+		when(build.getUrl()).thenReturn("http://www.fakeurl.com");
 		
 		HealthReport healthMock = mock(HealthReport.class);
 		when(healthMock.getDescription()).thenReturn("Fine");
@@ -60,8 +55,9 @@ public class OverviewCommandTest {
         when(job.getLastBuild()).thenReturn(build);
         when(job.getLastBuild().getNumber()).thenReturn(9);
         when(job.getLastBuild().getTimestampString()).thenReturn("10 min");
-        when(job.getLastBuild().getUrl()).thenReturn("http://www.fakeurl.com");
-        //System.out.println(MessageHelper.getBuildURL(job.getLastBuild()));
+        
+        // same as line 49 <2015/10/27>
+        //when(job.getLastBuild().getUrl()).thenReturn("http://www.fakeurl.com");
         
         Result result = Result.SUCCESS;
         when(job.getLastBuild().getResult()).thenReturn(result);
@@ -72,10 +68,15 @@ public class OverviewCommandTest {
 		
 		assertFalse(reply.contains(AbstractMultipleJobCommand.UNKNOWN_JOB_STR));
 		assertTrue(reply.contains("fsProject"));
-		//System.out.println(reply);
+		System.out.println(reply);
 		Matcher m = percentagePattern.matcher(reply);
 		assertTrue(m.find());
 		String match = m.group(1);
 		assertEquals("100", match);
 	}
+	
+//	@Test
+//	public void testFailure() throws Exception {
+//		
+//	}
 }
