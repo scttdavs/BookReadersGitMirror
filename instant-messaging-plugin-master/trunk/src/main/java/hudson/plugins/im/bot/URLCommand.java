@@ -22,13 +22,22 @@ public class URLCommand extends AbstractTextSendingCommand {
     }
 
     private String getBaseURL(){
-    	return Jenkins.getInstance().getRootUrl();
+    	String rootURL = "http://host:port/";
+    	try {
+    		rootURL = Jenkins.getInstance().getRootUrl();
+    	} catch ( NullPointerException e) {
+//    		System.out.println("Jenkins Not Found!!");
+    	}
+    	if ( !rootURL.endsWith("/") ) {
+			rootURL += "/";
+		}
+    	return rootURL;
     }
     private String getGlobalConfigureURL(){
-    	return getBaseURL()+"configure";
+    	return getBaseURL()+"configure/";
     }
     private String getGlobalSystemLogURL(){
-    	return getBaseURL()+"log";
+    	return getBaseURL()+"log/";
     }
     private String getAvailableCommand()
     {
@@ -46,8 +55,13 @@ public class URLCommand extends AbstractTextSendingCommand {
         if(cmd_list == null)
         {
             cmd_list = new HashMap<String,Integer>();
+            
             cmd_list.put("base", 1);
+            cmd_list.put("root", 1);
+            
             cmd_list.put("configure", 2);
+            cmd_list.put("conf", 2);
+            
             cmd_list.put("log", 3);
 
         }

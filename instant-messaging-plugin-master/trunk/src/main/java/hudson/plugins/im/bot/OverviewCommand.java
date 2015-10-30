@@ -19,6 +19,7 @@ import hudson.plugins.im.tools.MessageHelper;
  *
  * @author Anna, Scott
  */
+@Extension
 public class OverviewCommand extends AbstractMultipleJobCommand {
 	
 	public final String OVERVIEW = "overview";
@@ -29,9 +30,6 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
 		return Arrays.asList(OVERVIEW, "o");
 	}
 	
-	/**
-	 * 
-	 */
 	@Override
 	protected CharSequence getMessageForJob(AbstractProject<?, ?> project) {
 		StringBuilder msg = new StringBuilder(32);
