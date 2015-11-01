@@ -22,7 +22,8 @@ import java.util.*;
 public class ShowIfCommand extends AbstractSourceQueryCommand {
     @Override
     public Collection<String> getCommandNames() {
-        return Arrays.asList("showIf","si");
+        System.out.println("[CHECK] getCommandNames() was reached in ShowIf\n");
+        return Arrays.asList("ShowIf","si");
     }
 
     @Override
