@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Iterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,8 +16,10 @@ import hudson.model.FreeStyleBuild;
 import hudson.model.HealthReport;
 import hudson.model.ItemGroup;
 import hudson.model.Result;
+import hudson.model.User;
 import hudson.plugins.im.Sender;
 import hudson.plugins.im.tools.MessageHelper;
+import hudson.scm.ChangeLogSet;
 
 import org.junit.Test;
 
@@ -48,19 +51,40 @@ public class OverviewCommandTest {
 		when(healthMock.getScore()).thenReturn(100);
 		
 		AbstractMavenProject job = mock(AbstractMavenProject.class);
+		
 		ItemGroup parent = mock(ItemGroup.class);
 		when(parent.getFullDisplayName()).thenReturn("");
 		when(job.getParent()).thenReturn(parent);
         when(job.getFullDisplayName()).thenReturn("fsProject");
         when(job.getLastBuild()).thenReturn(build);
-        when(job.getLastBuild().getNumber()).thenReturn(9);
-        when(job.getLastBuild().getTimestampString()).thenReturn("10 min");
+        
+        User user = mock(User.class);
+		when(user.toString()).thenReturn("Batman");
+        ChangeLogSet.Entry item = mock(ChangeLogSet.Entry.class);
+		Object[] items = new Object[1];
+		items[0] = item;
+		when(item.getAuthor()).thenReturn(user);
+		when(item.getMsg()).thenReturn("Batman to the rescue!");
+		ChangeLogSet changeSet = mock(ChangeLogSet.class);
+		
+		Iterator<ChangeLogSet.Entry> iterator = mock(Iterator.class);
+        when(iterator.hasNext()).thenReturn(Boolean.TRUE, Boolean.FALSE);
+        when(iterator.next()).thenReturn(item);
+        
+        when(changeSet.isEmptySet()).thenReturn(false);
+        when(changeSet.iterator()).thenReturn(iterator);
+        
+		//when(changeSet.getItems()).thenReturn(items);
+		when(build.getChangeSet()).thenReturn(changeSet);		
+		
+        when(build.getNumber()).thenReturn(9);
+        when(build.getTimestampString()).thenReturn("10 min");
         
         // same as line 49 <2015/10/27>
         //when(job.getLastBuild().getUrl()).thenReturn("http://www.fakeurl.com");
         
         Result result = Result.SUCCESS;
-        when(job.getLastBuild().getResult()).thenReturn(result);
+        when(build.getResult()).thenReturn(result);
         
         when(job.getBuildHealth()).thenReturn(healthMock);		
 		OverviewCommand cmd = new OverviewCommand();

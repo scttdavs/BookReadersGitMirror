@@ -1,0 +1,96 @@
+package hudson.plugins.im.bot;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+
+import hudson.Extension;
+import hudson.plugins.im.Sender;
+import jenkins.model.Jenkins;
+
+@Extension
+public class URLCommand extends AbstractTextSendingCommand {
+
+	private static final String SYNTAX = "<page>";
+	private static final String HELP = SYNTAX + " - retrieve the spesific URL for Jenkins";
+
+	HashMap<String, Integer> cmd_list;
+
+	@Override
+	public Collection<String> getCommandNames() {
+		return Collections.singleton("geturl");
+	}
+
+	@Override
+	protected String getReply(Bot bot, Sender sender, String[] args) {
+		if (cmd_list == null) {
+			cmd_list = new HashMap<String, Integer>();
+
+			cmd_list.put("base", 1);
+			cmd_list.put("root", 1);
+
+			cmd_list.put("configure", 2);
+			cmd_list.put("conf", 2);
+
+			cmd_list.put("log", 3);
+
+			cmd_list.put("plugin", 4);
+			cmd_list.put("plugins", 4);
+		}
+
+		if (args.length == 1) {
+			return getBaseURL();
+		} else if (args.length == 2) {
+			int cmd_idx = cmd_list.get(args[1]) == null ? 0 : cmd_list.get(args[1]);
+			switch (cmd_idx) {
+			case 1:
+				return getBaseURL();
+			case 2:
+				return getGlobalConfigureURL();
+			case 3:
+				return getGlobalSystemLogURL();
+			case 4:
+				return getPluginManager();
+			default:
+				return getAvailableCommand();
+			}
+		} else {
+			return giveSyntax(sender.getNickname(), args[0]);
+		}
+	}
+
+	@Override
+	public String getHelp() {
+		return HELP;
+	}
+
+	private String giveSyntax(String sender, String cmd) {
+		return sender + ": syntax is: '" + cmd + SYNTAX + "'";
+	}
+
+	String getBaseURL() {
+		return Jenkins.getInstance().getRootUrl();
+	}
+
+	private String getGlobalConfigureURL() {
+		return getBaseURL() + "configure/";
+	}
+
+	private String getGlobalSystemLogURL() {
+		return getBaseURL() + "log/";
+	}
+
+	private String getPluginManager() {
+		return getBaseURL() + "pluginManager/";
+	}
+
+	private String getAvailableCommand() {
+		StringBuilder buf = new StringBuilder();
+		buf.append("Available Command: ");
+		for (String key : cmd_list.keySet()) {
+			buf.append(key);
+			buf.append(", ");
+		}
+		return buf.substring(0, buf.length() - 2);
+	}
+}

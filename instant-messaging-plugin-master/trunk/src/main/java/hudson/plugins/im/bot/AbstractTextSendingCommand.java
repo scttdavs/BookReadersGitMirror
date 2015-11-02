@@ -41,7 +41,8 @@ public abstract class AbstractTextSendingCommand extends BotCommand {
 			LOGGER.warning(ExceptionHelper.dump(e));
 			reply = sender.getNickname() + ": Error " + e.toString();
 		}
-		chat.sendMessage(reply);
+        
+	    chat.sendMessage(reply);
 	}
 
 	/**

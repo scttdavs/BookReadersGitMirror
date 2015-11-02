@@ -1,5 +1,6 @@
 package hudson.plugins.im.bot;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
@@ -9,13 +10,12 @@ import hudson.model.User;
 
 public class GetUserHistory implements Collection<AbstractBuild<?, ?>> {
 	
-	private Collection<AbstractBuild<?, ?>> builds;
+	private Collection<AbstractBuild<?, ?>> filteredBuilds;
 	private String username;
 	
 	public GetUserHistory(Collection<AbstractBuild<?, ?>> builds, String username) {
-		this.builds = builds;
 		this.username = username;
-		applyFilter();
+		applyFilter(builds);
 		
 	}
 	
@@ -23,93 +23,90 @@ public class GetUserHistory implements Collection<AbstractBuild<?, ?>> {
 	 * filter method
 	 * It apply filter to received data (builds)
 	 */
-	private void applyFilter() {
-		for(AbstractBuild abBuild: builds) {
-			
-			// testing with getCulprits method
-			Set users = abBuild.getCulprits();
-			if(!users.equals(User.get(username))) {
-				builds.remove(abBuild);
+	private void applyFilter(Collection<AbstractBuild<?, ?>> originals) {
+		filteredBuilds = new ArrayList<AbstractBuild<?, ?>>();
+		for(AbstractBuild<?, ?> abBuild: originals) {
+			if(abBuild.hasParticipant(User.get(username))) {
+				filteredBuilds.add(abBuild);
 			}
-			
 		}
 	}
 
 	@Override
 	public int size() {
 		// TODO Auto-generated method stub
-		return builds.size();
+		return filteredBuilds.size();
 	}
 
 	@Override
 	public boolean isEmpty() {
 		// TODO Auto-generated method stub
-		return builds.isEmpty();
+		return filteredBuilds.isEmpty();
 	}
 
 	@Override
 	public boolean contains(Object o) {
 		// TODO Auto-generated method stub
-		return builds.contains(o);
+		return filteredBuilds.contains(o);
 	}
 
 	@Override
 	public Iterator<AbstractBuild<?, ?>> iterator() {
 		// TODO Auto-generated method stub
-		return builds.iterator();
+		return filteredBuilds.iterator();
 	}
 
 	@Override
 	public Object[] toArray() {
 		// TODO Auto-generated method stub
-		return builds.toArray();
+		return filteredBuilds.toArray();
 	}
 
 	@Override
 	public <T> T[] toArray(T[] a) {
 		// TODO Auto-generated method stub
-		return builds.toArray(a);
+		return filteredBuilds.toArray(a);
 	}
 
 	@Override
 	public boolean add(AbstractBuild<?, ?> e) {
 		// TODO Auto-generated method stub
-		return builds.add(e);
+		return filteredBuilds.add(e);
 	}
 
 	@Override
 	public boolean remove(Object o) {
 		// TODO Auto-generated method stub
-		return builds.remove(o);
+		return filteredBuilds.remove(o);
 	}
 
 	@Override
 	public boolean containsAll(Collection<?> c) {
 		// TODO Auto-generated method stub
-		return builds.containsAll(c);
+		return filteredBuilds.containsAll(c);
 	}
 
 	@Override
 	public boolean addAll(Collection<? extends AbstractBuild<?, ?>> c) {
 		// TODO Auto-generated method stub
-		return builds.addAll(c);
+		return filteredBuilds.addAll(c);
 	}
 
 	@Override
 	public boolean removeAll(Collection<?> c) {
 		// TODO Auto-generated method stub
-		return builds.removeAll(c);
+		return filteredBuilds.removeAll(c);
 	}
 
 	@Override
 	public boolean retainAll(Collection<?> c) {
 		// TODO Auto-generated method stub
-		return builds.retainAll(c);
+		return filteredBuilds.retainAll(c);
 	}
 
 	@Override
 	public void clear() {
 		// TODO Auto-generated method stub
-		builds.clear();
+		filteredBuilds.clear();
 	}
 }

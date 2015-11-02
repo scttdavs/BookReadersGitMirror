@@ -13,6 +13,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.HealthReport;
 import hudson.plugins.im.tools.MessageHelper;
+import hudson.scm.ChangeLogSet.Entry;
 
 /**
  * Displays the health for one or several jobs.
@@ -59,7 +60,7 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
         	if (reports.isEmpty() ) {
         		reports = Collections.singletonList(project.getBuildHealth());
         	}
-        	// health information
+        	// display health information
         	int i = 1;
         	for (HealthReport health : reports) {
         		msg.append(health.getDescription())
@@ -75,11 +76,19 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
 			msg.append(spaces.toString());
         	msg.append("Last Build: ").append(lastBuild.getNumber()).append(" (")
         	.append(lastBuild.getTimestampString()).append(" ago): ").append(lastBuild.getResult());
-        	msg.append(LINE_BREAK);
-			msg.append(spaces.toString());
 			
 			// build url
+			msg.append(LINE_BREAK);
+        	msg.append(spaces.toString());
 			msg.append(MessageHelper.getBuildURL(lastBuild));
+			
+			// commit authors and messages
+			for (Entry entry : lastBuild.getChangeSet()) {
+            	msg.append(LINE_BREAK);
+            	msg.append(spaces.toString());
+            	msg.append("* ");
+                msg.append(entry.getAuthor()).append(": ").append(entry.getMsg());
+            }
         } else {
             msg.append("no finished build yet");
         }

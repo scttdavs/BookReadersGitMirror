@@ -31,6 +31,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Date;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLSocketFactory;
@@ -407,8 +408,12 @@ public class IRCConnection implements IMConnection, JoinListener, InviteListener
 
         // IRC doesn't support multiline messages (see http://stackoverflow.com/questions/7039478/linebreak-irc-protocol)
 	    // therefore we split the message on line breaks and send each line as its own message:
-        String[] lines = text.split("\\r?\\n|\\r");
+        String[] lines = text.split("\\r?\\n|\\r|\\n");
         for (String line : lines) {
+            // add wait here to prevent flood
+            long start = new Date().getTime();
+            while(new Date().getTime() - start < 1000L){}
+
             if (useColors){
                 line = IRCColorizer.colorize(line);
             }

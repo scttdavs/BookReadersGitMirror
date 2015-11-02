@@ -94,9 +94,9 @@ public class UserCommand extends AbstractSourceQueryCommand {
         }
         StringBuilder msg = new StringBuilder(builds.size());
         for (AbstractBuild<?, ?> abBuild: builds) {
-            msg.append("last build: ").append(abBuild.getNumber()).append(" (")
+            msg.append(abBuild.getFullDisplayName()).append(" : ").append(abBuild.getNumber()).append(" (")
                 .append(abBuild.getTimestampString()).append(" ago): ").append(abBuild.getResult()).append(": ")
-                .append(MessageHelper.getBuildURL(abBuild));
+                .append(MessageHelper.getBuildURL(abBuild)).append("\n");
         }
         return msg;
     }

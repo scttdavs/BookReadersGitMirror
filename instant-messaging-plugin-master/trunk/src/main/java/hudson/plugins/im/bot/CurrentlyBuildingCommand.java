@@ -59,9 +59,7 @@ public class CurrentlyBuildingCommand extends BotCommand {
 					msg.append(item != null ? item.getFullDisplayName() : task.getDisplayName());
 					msg.append(" (Elapsed time: ");
 					msg.append(Util.getTimeSpanString(executor.getElapsedTime()));
-					//msg.append(", Estimated remaining time: ");
-					// test oct 25 12:46 pm
-					msg.append(", bookreader remaining time: ");
+					msg.append(", Estimated remaining time: ");
 					msg.append(executor.getEstimatedRemainingTime());
 					msg.append(")");
 				}
@@ -69,8 +67,6 @@ public class CurrentlyBuildingCommand extends BotCommand {
 		}
 
 		if (!currentlyJobsInProgess) {
-			//msg.append("\n- No jobs are running.");
-			// test oct 25 1:03 pm
 			msg.append("\n- No jobs are running. Try again later!");
 		}
 

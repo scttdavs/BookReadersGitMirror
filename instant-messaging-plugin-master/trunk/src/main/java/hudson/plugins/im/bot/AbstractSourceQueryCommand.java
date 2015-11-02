@@ -55,7 +55,6 @@ abstract class AbstractSourceQueryCommand extends AbstractTextSendingCommand {
 
         if (!projects.isEmpty()) {
             StringBuilder msg = new StringBuilder();
-        	msg.append(getCommandShortName()).append(" of all projects:\n");
             msg.append(getMessageForJob(projects,args));
             return msg.toString();
         } else {
@@ -75,8 +74,9 @@ abstract class AbstractSourceQueryCommand extends AbstractTextSendingCommand {
         return;
     }
 
+    @Override
 	public String getHelp() {
-        return " user <user> | date < < | = | > > <date> | project <project> | build <build number> | jobs <number of jobs> - show the "
+        return " user <user> | date < < | = | > > <YYYY-MM-DD-HH-mm> | project <project> | build <build number> | jobs <number of jobs> - show the "
                 + getCommandShortName()
                 + " of jobs specified";
     }

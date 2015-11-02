@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import hudson.maven.AbstractMavenProject;
 import hudson.model.FreeStyleBuild;
+import hudson.model.FreeStyleProject;
 import hudson.model.HealthReport;
 import hudson.model.ItemGroup;
 import hudson.plugins.im.Sender;
