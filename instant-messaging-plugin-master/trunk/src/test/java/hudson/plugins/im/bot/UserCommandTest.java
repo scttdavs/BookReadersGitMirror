@@ -114,22 +114,22 @@ public class UserCommandTest {
         }
         
         Sender sender = new Sender("tester");
-	String[] args = { "userHistory", "superman"};
-	
-	JobProvider jobProvider = mock(JobProvider.class);
-	UserCommand cmd = new UserCommand();
+		String[] args = { "userHistory", "superman"};
+		
+		JobProvider jobProvider = mock(JobProvider.class);
+		UserCommand cmd = new UserCommand();
         cmd.setJobProvider(jobProvider);
         ArrayList<AbstractProject<?,?>> list = new ArrayList();
         list.add(project);
         CharSequence reply = cmd.getMessageForJob(list, args);
-	String replyStr = reply.toString();
-	String expectedStr = "null : 0 (null ago): null: ";
-	expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + "0\n";
-	for(int i = 3; i < 50; i +=3) {
-	    expectedStr += "null : 0 (null ago): null: ";
-	    expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + i +"\n";
-	}
-	assertEquals(expectedStr, replyStr);
+		String replyStr = reply.toString();
+		String expectedStr = "null : 0 (null ago): null: ";
+		expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + "0\n";
+		for(int i = 3; i < 50; i +=3) {
+		    expectedStr += "null : 0 (null ago): null: ";
+		    expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + i +"\n";
+		}
+		assertEquals(expectedStr, replyStr);
     }
 }
 

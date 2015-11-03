@@ -63,6 +63,49 @@ public class ShowIfCommandTest {
         return project;
     }
 
+    private AbstractProject<?,?> createProjectWithBuilds(Calendar date, String name, int n, Calendar date_final) {
+        AbstractProject project = mock(AbstractProject.class);
+        ArrayList<AbstractBuild<?, ?>> builds = new ArrayList<AbstractBuild<?,?>>();
+        for (int i = 0; i < n; i++) {
+            AbstractBuild<?, ?> build = mock(AbstractBuild.class);
+            if (i == 0) {
+                doReturn(null).when(build).getPreviousBuild();
+            } else {
+                doReturn(builds.get(i-1)).when(build).getPreviousBuild();
+            }
+            doReturn(project).when(build).getProject();
+            doReturn(i).when(build).getNumber();
+            if(i != 0) {
+                doReturn(date).when(build).getTimestamp();
+            } else {
+                doReturn(date_final).when(build).getTimestamp();
+            }
+            builds.add(build);
+        }
+        when(project.getLastBuild()).thenReturn(builds.get(0));
+        when(project.getName()).thenReturn(name);
+        return project;
+    }
+
+    @Test
+    public void testMultiBuild() {
+        @SuppressWarnings({ "rawtypes" })
+        Calendar date = Calendar.getInstance();
+        date.set(2015,1,1,1,0,0);
+        Calendar date2 = Calendar.getInstance();
+        date2.set(2012,1,1,1,0,0);
+        AbstractProject project = createProjectWithBuilds(date,"test",15,date2);
+        AbstractProject project2 = createProjectWithBuilds(date2,"test2",11,date);
+        ArrayList<AbstractProject<?,?>> list = new ArrayList<AbstractProject<?,?>>();
+        list.add(project);
+        list.add(project2);
+        ShowIfCommand command = new ShowIfCommand();
+        String result = command.getMessageForJob(list,
+                new String[] { "jobs", "<","1"}).toString();
+        boolean test = result.startsWith("last build:");
+        assertEquals(test, true);
+    }
+
     @Test
     public void testNothing() {
      	@SuppressWarnings({ "rawtypes" })
