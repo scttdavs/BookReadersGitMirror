@@ -4,6 +4,7 @@ import hudson.model.ResultTrend;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.HashMap;
 
 import org.pircbotx.Colors;
 
@@ -20,6 +21,10 @@ public class IRCColorizer {
      * Very simple pattern to recognize test results.
      */
     private static final Pattern TEST_CLASS_PATTERN = Pattern.compile(".*test.*", Pattern.CASE_INSENSITIVE);
+    
+    //e.g.userPattern[nickname][user_prefered_string_pattern]
+    private static HashMap<String, HashMap<Pattern, String> > userPattern; //TODO
+    // implement or find api for load/dump the HashMap to/from external file
 
     /**
      * Colorize the message line if certain keywords are found in it. 
@@ -40,6 +45,31 @@ public class IRCColorizer {
         }
     }
     
+    
+    
+    
+    // set the user defined color for specific string,
+    // will be called by onMessage() method in PircListener.java
+    private void setter(String nickname, String pattern, String color) //TODO
+    {
+    	// compile the string pattern and store it in userPattern, pattern:color
+    	// e.g. Pattern cPattern = Pattern.compile(".*pattern*", Pattern.CASE_INSENSITIVE);
+    	userPattern.put(nickname, cPattern->color);
+    }
+    
+    // set the message with user preference if the preference can be retrived in userPattern
+    private String getUserString(String nickname, String message) //TODO
+    {
+    	String res;
+    	// look up userPattern and extract the user pre-set pattern preference if exist
+    	// if not exist, return original string
+    	
+    	
+    	//if exisit, parse through and encode the output string based on the user pattern preference
+    	return res;
+    	
+    }
+    
     private static String colorForBuildResult(String line) {
         for (ResultTrend result : ResultTrend.values()) {
             
@@ -58,6 +88,7 @@ public class IRCColorizer {
                     case NOW_UNSTABLE: color = Colors.BOLD + Colors.MAGENTA; break;
                     case ABORTED: color = Colors.BOLD + Colors.LIGHT_GRAY; break;
                     default: return line;
+                    // default: getUserString(String nickname, String line) // TODO
                 }
                 
                 return line.substring(0, index) + color + keyword + Colors.NORMAL
