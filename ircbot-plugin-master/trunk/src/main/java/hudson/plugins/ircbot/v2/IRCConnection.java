@@ -415,7 +415,8 @@ public class IRCConnection implements IMConnection, JoinListener, InviteListener
             while(new Date().getTime() - start < 1000L){}
 
             if (useColors){
-                line = IRCColorizer.colorize(line);
+                // target should be the name of the channel or the name of the user to which a private message is directed.
+                line = IRCColorizer.colorize(target, line);
             }
             if (this.descriptor.isUseNotice()) {
                 this.pircConnection.sendIRC().notice(target, line);

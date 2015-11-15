@@ -19,6 +19,7 @@
 			<email>kutzi@gmx.de</email>
 			<timezone>1</timezone>
 		</developer>
+		
         <developer>
           <id>kohsuke</id>
           <name>Kohsuke Kawaguchi</name>

@@ -29,47 +29,22 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
     private static final Logger LOGGER  = Logger.getLogger(ShowIfCommand.class.getName());
     @Override
     public Collection<String> getCommandNames() {
-        System.out.println("[CHECK] getCommandNames() was reached in ShowIf\n");
-        return Arrays.asList("ShowIf","si");
+        System.out.println("[CHECK] getCommandNames() was reached in showIf\n");
+        return Arrays.asList("showIf","si");
     }
 
-    @Override
-    protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {
-        // add a logger for args
-        String log_msg = args.toString();
-        LOGGER.warning(log_msg);
-
-        String spacer = "|";
-        int arg_len = args.length;
-        
-        LOGGER.warning("there are " + Integer.toString(arg_len) + " args items\n");
-
-        // convert projects Collection to ArrayList
-        ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
-        
-        // Parse Query
-        for (int i = 0; i < arg_len; i++) {
-            if(!args[i].equals("ShowIf") && !args[i].equals("!jenkins") && !args[i].equals(spacer)){
-                ArrayList<String> temp = new ArrayList<String>();
-                for (; i < arg_len && !args[i].equals(spacer); i++) {
-                    temp.add(args[i]);
-                }
-                list.add(temp);
-            }
-        }
-
-        // get all builds
-        // if this command is slow may need to put limiter on while loop
-        Collection<AbstractBuild<?,?>> builds = new ArrayList<AbstractBuild<?,?>>();
-        for (AbstractProject<?, ?> abProj: projects) {
-            AbstractBuild<?,?> tempbuild = abProj.getLastBuild();
-            while(tempbuild != null){
-                builds.add(tempbuild);
-                tempbuild = tempbuild.getPreviousBuild();
-            }
-        }
-        
+    private CharSequence distroToFilter(ArrayList<ArrayList<String>> list, String[] args, Collection<AbstractBuild<?,?>> builds) {
         // iterate over the query chunks
+    	boolean flag = false;
+    	for (int i = 0; i < list.size(); i++) {
+    		flag = flag || list.get(i).get(0) == "build"; 
+    	}
+    	if (!flag) {
+    		ArrayList<String> temp = new ArrayList<String>();
+    		temp.add("build");
+    		temp.add("10");
+    		list.add(temp);
+    	}
         for (int i = 0; i < list.size(); i++) {
             switch ((list.get(i)).get(0)) {
                 case "user":
@@ -119,6 +94,45 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
                 .append(System.getProperty("line.separator"));
         }
         return msg;
+    }
+
+    @Override
+    protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {
+        // add a logger for args
+        String log_msg = args.toString();
+        LOGGER.warning(log_msg);
+
+        String spacer = "|";
+        int arg_len = args.length;
+        
+        LOGGER.warning("there are " + Integer.toString(arg_len) + " args items\n");
+
+        // convert projects Collection to ArrayList
+        ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
+        
+        // Parse Query
+        for (int i = 0; i < arg_len; i++) {
+            if((!args[i].equals("showIf") || !args[i].equals("si")) && !args[i].equals("!jenkins") && !args[i].equals(spacer)){
+                ArrayList<String> temp = new ArrayList<String>();
+                for (; i < arg_len && !args[i].equals(spacer); i++) {
+                    temp.add(args[i]);
+                }
+                list.add(temp);
+            }
+        }
+
+        // get all builds
+        // if this command is slow may need to put limiter on while loop
+        Collection<AbstractBuild<?,?>> builds = new ArrayList<AbstractBuild<?,?>>();
+        for (AbstractProject<?, ?> abProj: projects) {
+            AbstractBuild<?,?> tempbuild = abProj.getLastBuild();
+            while(tempbuild != null){
+                builds.add(tempbuild);
+                tempbuild = tempbuild.getPreviousBuild();
+            }
+        }
+
+        return distroToFilter( list,args, builds);
     }
 
 

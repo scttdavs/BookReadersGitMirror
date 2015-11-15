@@ -7,9 +7,11 @@ import hudson.plugins.im.IMConnectionListener;
 import hudson.plugins.im.IMMessage;
 import hudson.plugins.im.IMMessageListener;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
+import java.util.Arrays;
 
 import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.ListenerAdapter;
@@ -24,6 +26,7 @@ import org.pircbotx.hooks.events.NoticeEvent;
 import org.pircbotx.hooks.events.PartEvent;
 import org.pircbotx.hooks.events.PrivateMessageEvent;
 import org.pircbotx.hooks.events.ServerResponseEvent;
+import org.pircbotx.hooks.types.GenericMessageEvent;
 
 import edu.umd.cs.findbugs.annotations.SuppressWarnings;
 
@@ -57,7 +60,7 @@ public class PircListener extends ListenerAdapter<PircBotX> {
 	@java.lang.SuppressWarnings("unused")
 	private final PircBotX pircBot;
     private final String nick;
-
+    private final String onlyIndicator = "only";
 	public PircListener(PircBotX pircBot, String nick) {
 	    this.pircBot = pircBot;
 	    this.nick = nick;
@@ -77,12 +80,43 @@ public class PircListener extends ListenerAdapter<PircBotX> {
      */
     @Override
     public void onMessage(MessageEvent<PircBotX> event) {
-    	for (MessageListener l : this.msgListeners) {
-    		if(l.target.equals(event.getChannel().getName())) {
-    			l.listener.onMessage(new IMMessage(event.getUser().getNick(),
-    			        event.getChannel().getName(), event.getMessage()));
-    		}
-    	}
+    	if (event.getMessage().contains(onlyIndicator)) {
+            onMultiMessage(event);
+        } else {
+            for (MessageListener l : this.msgListeners) {
+        		if(l.target.equals(event.getChannel().getName())) {
+        			l.listener.onMessage(new IMMessage(event.getUser().getNick(),
+        			        event.getChannel().getName(), event.getMessage()));
+        		}
+        	}
+        }
+    }
+
+    // dispatch to many private messages
+    private void onMultiMessage(GenericMessageEvent<PircBotX> event){
+        String msg = event.getMessage();
+        ArrayList<String> recipients = new ArrayList<String>();
+        recipients.add(event.getUser().getNick());
+        
+        // get the index of the character after the space after the indicator
+        // !jenkins ... only asdf,qwert
+        //                   ^
+        int index = msg.indexOf(onlyIndicator) + onlyIndicator.length() + 1;
+        //only indicator found but no recipients passed.
+        if (index >= msg.length()) {
+            LOGGER.warning("No recipients passed. Usage: !jenkins ... only user1,user2,...");
+            return;
+        }
+        // grabbing recipients from message and removing whitespace (replacAll)
+        String args = msg.substring(index,msg.length()).replaceAll("\\s+","");
+        // add all recipients to list
+        recipients.addAll(Arrays.asList(args.split(",")));
+        for (String r : recipients) {
+            // create a new private message event to dispatch to user
+            PrivateMessageEvent<PircBotX> newEvent = new PrivateMessageEvent<PircBotX>(event.getBot(),
+                event.getBot().getUserChannelDao().getUser(r),msg);
+            onPrivateMessage(newEvent);
+        }
     }
 
     /**
@@ -92,13 +126,18 @@ public class PircListener extends ListenerAdapter<PircBotX> {
     public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {
         String sender = event.getUser().getNick();
         String message = event.getMessage();
-    	for (MessageListener l : this.msgListeners) {
-    		if (this.nick.equals(l.target)) {
-    		    if (l.sender == CHAT_ESTABLISHER || sender.equals(l.sender)) {
-    		        l.listener.onMessage(new IMMessage(sender, this.nick, message));
-    		    }
-    		}
-    	}
+        if (message.contains(onlyIndicator)) {
+            onMultiMessage(event);
+        }
+        else {
+            for (MessageListener l : this.msgListeners) {
+                if (this.nick.equals(l.target)) {
+                    if (l.sender == CHAT_ESTABLISHER || sender.equals(l.sender)) {
+                        l.listener.onMessage(new IMMessage(sender, this.nick, message));
+                    }
+                }
+            }
+        }
     }
     
     /**

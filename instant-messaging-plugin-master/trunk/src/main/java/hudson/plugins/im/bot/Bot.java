@@ -57,6 +57,7 @@ public class Bot implements IMMessageListener {
 						msg.append(item.getValue().getHelp());
 					}
 				}
+				msg.append("\n \"!jenkins <command> only <user1>,<user2>,...\" - for limiting recipients of messaging.\n");
 				bot.helpCache = msg.toString();
 			}
 			groupChat.sendMessage(bot.helpCache);
