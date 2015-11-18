@@ -35,136 +35,100 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 public class UserCommandTest {
-    
-    @Rule public JenkinsRule j = new JenkinsRule();
 
-    private FreeStyleProject project;
-    private List<ParameterValue> parsedParameters;
+	@Rule
+	public JenkinsRule j = new JenkinsRule();
 
-    
-    @Test
-    public void testNoUser() {
-        Bot bot = mock(Bot.class);
-        
-        Sender sender = new Sender("tester");
-	String[] args = { "userHistory"};
-	
-	UserCommand cmd = new UserCommand();
-	String reply = cmd.getReply(bot, sender, args);
-	assertEquals("tester: syntax is: 'userHistory <username>'", reply);
-    }
-    
-    @Test
-    public void testFakeUser() {
-        Bot bot = mock(Bot.class);
-        
-        Sender sender = new Sender("tester");
-	String[] args = { "userHistory", "foo"};
-	
-	UserCommand cmd = new UserCommand();
-	String reply = cmd.getReply(bot, sender, args);
-	assertEquals("tester: don't know a user named foo", reply);
-    }
-    
-    @Test
-    public void testUsersWithOneBuildCase() {
-        User user = User.get("superman");
-        User[] users = {user, User.get("spideman"), User.get("batman") };
-        
-        AbstractProject project = mock(AbstractProject.class);
-        AbstractBuild<?, ?> build = mock(AbstractBuild.class);
-        when(build.hasParticipant(user)).thenReturn(true);
-        when(project.getLastBuild()).thenReturn(build);
-        when(build.getUrl()).thenReturn("one");
-        
-	String[] args = { "userHistory", "superman"};
-	
-	UserCommand cmd = new UserCommand();
-        ArrayList<AbstractProject<?,?>> list = new ArrayList();
-        list.add(project);
-        CharSequence reply = cmd.getMessageForJob(list, args);
-	String replyStr = reply.toString();
-	String expectedStr = "null : 0 (null ago): null: ";
-	expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + "one\n";
-	assertEquals(expectedStr, replyStr);
-    }
-    
-    @SuppressWarnings({ "unchecked", "rawtypes" }) 
-    @Test
-    public void testUsersWithMultipleBuildCases() {
-        Bot bot = mock(Bot.class);
-        
-        User user = User.get("superman");
-        User[] users = {user, User.get("spideman"), User.get("batman") };
-        
-        AbstractProject project = mock(AbstractProject.class);
-        AbstractBuild<?, ?> build = mock(AbstractBuild.class);
-        when(build.hasParticipant(User.get("batman"))).thenReturn(true);
-        when(project.getLastBuild()).thenReturn(build);
-        when(build.getUrl()).thenReturn("one");
-        
-        AbstractBuild<?, ?> prevBuild = build;
-        for(int i = 0; i < 50; i++) {
-	    AbstractBuild tempBuild = (AbstractBuild) mock(AbstractBuild.class);
-	    
-	    when(tempBuild.hasParticipant(users[i % 3])).thenReturn(true);
-	    when(tempBuild.getUrl()).thenReturn(String.valueOf(i));
-	    doReturn(tempBuild).when(prevBuild).getPreviousBuild();
-	    prevBuild = tempBuild;
-        }
-        
-        Sender sender = new Sender("tester");
-		String[] args = { "userHistory", "superman"};
-		
+	private FreeStyleProject project;
+	private List<ParameterValue> parsedParameters;
+
+	@Test
+	public void testNoUser() {
+		Bot bot = mock(Bot.class);
+
+		Sender sender = new Sender("tester");
+		String[] args = { "userHistory" };
+
+		UserCommand cmd = new UserCommand();
+		String reply = cmd.getReply(bot, sender, args);
+		assertEquals("tester: syntax is: 'userHistory <username>'", reply);
+	}
+
+	@Test
+	public void testFakeUser() {
+		Bot bot = mock(Bot.class);
+
+		Sender sender = new Sender("tester");
+		String[] args = { "userHistory", "foo" };
+
+		UserCommand cmd = new UserCommand();
+		String reply = cmd.getReply(bot, sender, args);
+		assertEquals("tester: don't know a user named foo", reply);
+	}
+
+	@Test
+	public void testUsersWithOneBuildCase() {
+		User user = User.get("superman");
+		User[] users = { user, User.get("spideman"), User.get("batman") };
+
+		AbstractProject project = mock(AbstractProject.class);
+		AbstractBuild<?, ?> build = mock(AbstractBuild.class);
+		when(build.hasParticipant(user)).thenReturn(true);
+		when(project.getLastBuild()).thenReturn(build);
+		when(build.getUrl()).thenReturn("one");
+
+		String[] args = { "userHistory", "superman" };
+
+		UserCommand cmd = new UserCommand();
+		ArrayList<AbstractProject<?, ?>> list = new ArrayList();
+		list.add(project);
+		CharSequence reply = cmd.getMessageForJob(list, args);
+		String replyStr = reply.toString();
+		String expectedStr = "null (null ago): null: ";
+		expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + "one\n";
+		assertEquals(expectedStr, replyStr);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testUsersWithMultipleBuildCases() {
+		Bot bot = mock(Bot.class);
+
+		User user = User.get("superman");
+		User[] users = { user, User.get("spideman"), User.get("batman") };
+
+		AbstractProject project = mock(AbstractProject.class);
+		AbstractBuild<?, ?> build = mock(AbstractBuild.class);
+		when(build.hasParticipant(User.get("batman"))).thenReturn(true);
+		when(project.getLastBuild()).thenReturn(build);
+		when(build.getUrl()).thenReturn("one");
+
+		AbstractBuild<?, ?> prevBuild = build;
+		for (int i = 0; i < 50; i++) {
+			AbstractBuild tempBuild = (AbstractBuild) mock(AbstractBuild.class);
+
+			when(tempBuild.hasParticipant(users[i % 3])).thenReturn(true);
+			when(tempBuild.getUrl()).thenReturn(String.valueOf(i));
+			doReturn(tempBuild).when(prevBuild).getPreviousBuild();
+			prevBuild = tempBuild;
+		}
+
+		Sender sender = new Sender("tester");
+		String[] args = { "userHistory", "superman" };
+
 		JobProvider jobProvider = mock(JobProvider.class);
 		UserCommand cmd = new UserCommand();
-        cmd.setJobProvider(jobProvider);
-        ArrayList<AbstractProject<?,?>> list = new ArrayList();
-        list.add(project);
-        CharSequence reply = cmd.getMessageForJob(list, args);
+		cmd.setJobProvider(jobProvider);
+		ArrayList<AbstractProject<?, ?>> list = new ArrayList();
+		list.add(project);
+		CharSequence reply = cmd.getMessageForJob(list, args);
 		String replyStr = reply.toString();
-		String expectedStr = "null : 0 (null ago): null: ";
+		String expectedStr = "null (null ago): null: ";
 		expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + "0\n";
-		for(int i = 3; i < 50; i +=3) {
-		    expectedStr += "null : 0 (null ago): null: ";
-		    expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + i +"\n";
+		for (int i = 3; i < 50; i += 3) {
+			expectedStr += "null (null ago): null: ";
+			expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + i + "\n";
 		}
 		assertEquals(expectedStr, replyStr);
-    }
+	}
 }
-
-   
-   
-   
-        
-   
-   
-   
-   
-   
-   
-    
-   
-   
-   
-   
-   
-
-   
-   
-   
-        
-   
-  
-  
-  
-        
-  
- 
-        
- 
- 
- 
-        
- 
-

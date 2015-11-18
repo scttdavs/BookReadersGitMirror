@@ -41,7 +41,6 @@ import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
 public class RepoCommandTest {
-	// @Rule public JenkinsRule j = new JenkinsRule();
 
 	private FreeStyleBuild build;
 	private AbstractMavenProject job;
@@ -57,66 +56,93 @@ public class RepoCommandTest {
 	@Before
 	public void setUp() {
 		build = mock(FreeStyleBuild.class);
-		when(build.getUrl()).thenReturn("http://www.fakeurl.com");
-
 		job = mock(AbstractMavenProject.class);
-
 		parent = mock(ItemGroup.class);
+		user = mock(User.class);
+		item = mock(ChangeLogSet.Entry.class);
+		changeSet = mock(ChangeLogSet.class);
+		iterator = mock(Iterator.class);
+		f = mock(File.class);
+		run = mock(Run.class);
+		when(build.getUrl()).thenReturn("http://www.fakeurl.com");
 		when(parent.getFullDisplayName()).thenReturn("");
-
 		when(job.getParent()).thenReturn(parent);
 		when(job.getFullDisplayName()).thenReturn("fsProject");
-		when(job.getLastBuild()).thenReturn(build);
-
-		user = mock(User.class);
+		when(job.getLastBuild()).thenReturn(build);	
 		when(user.toString()).thenReturn("Batman");
-		item = mock(ChangeLogSet.Entry.class);
 		Object[] items = new Object[1];
 		items[0] = item;
 		when(item.getAuthor()).thenReturn(user);
 		when(item.getMsg()).thenReturn("Batman to the rescue!");
-		when(item.getCommitId()).thenReturn("19661");
-		// when(item.getAffectedFiles())
-		changeSet = mock(ChangeLogSet.class);
-
-		iterator = mock(Iterator.class);
+		when(item.getCommitId()).thenReturn("19888");
 		when(iterator.hasNext()).thenReturn(Boolean.TRUE, Boolean.FALSE);
 		when(iterator.next()).thenReturn(item);
-
 		when(changeSet.isEmptySet()).thenReturn(false);
 		when(changeSet.iterator()).thenReturn(iterator);
 		when(build.getChangeSet()).thenReturn(changeSet);
 		when(build.getNumber()).thenReturn(9);
-		// when(build.getTimestampString()).thenReturn("10 min");
-		run = mock(Run.class);
 		when(item.getParent()).thenReturn(changeSet);
 		when(item.getParent().getRun()).thenReturn(run);
 		when(run.getUrl()).thenReturn("www.123.com");
-		// when(run.getSearchUrl()).thenReturn("www.456.com");
 		when(run.getBuildStatusUrl()).thenReturn("www.789.com");
-
-		f = mock(File.class);
 		when(f.getName()).thenReturn("filename");
 		when(run.getRootDir()).thenReturn(f);
-
-		//File f2 = new File("abc/efg");
-		//FilePath fp = new FilePath(f2);
-		//when(build.getModuleRoot()).thenReturn(fp);
-		//when(build.getModuleRoot().toString()).thenReturn("111");
-
+	}
+ 
+	public String getFinalResult(String[] s) {
+		AbstractProject project = job;
+		ArrayList<AbstractProject<?, ?>> list = new ArrayList<AbstractProject<?, ?>>();
+		list.add(project);
+		RepoCommand command = new RepoCommand();
+		String result = command.getMessageForJob(list, s).toString();
+		return result;
+	}
+	
+	@Test
+	public void testRepoCommand1() throws Exception {
+		String[] s = new String[] {"repo"};
+		String result = getFinalResult(s);
+		boolean test = result.contains("Building");
+		assertEquals(test, true);
 	}
 
 	@Test
-	public void testOverview() throws Exception {
-		AbstractProject project = job;
-		// AbstractProject project2 = job;
-		ArrayList<AbstractProject<?, ?>> list = new ArrayList<AbstractProject<?, ?>>();
-		list.add(project);
-		// list.add(project);
-		RepoCommand command = new RepoCommand();
-		String result = command.getMessageForJob(list, new String[] { "jobs", "<", "1" }).toString();
-		System.out.println(result);
+	public void testNumberSuccess() throws Exception {
+		String[] s = new String[] {"repo","reponumber","19888"};
+		String result = getFinalResult(s);
 		boolean test = result.contains("Building");
 		assertEquals(test, true);
+	}
+	
+	@Test
+	public void testNumberFailed() throws Exception {
+		String[] s = new String[] {"repo","reponumber","196"};
+		String result = getFinalResult(s);
+		boolean test = result.contains("Please");
+		assertEquals(test, true);
+	}
+	
+	@Test
+	public void testRepoCommand3() throws Exception {
+		String[] s = new String[] {"repo","show","3"};
+		String result = getFinalResult(s);
+		boolean test = result.contains("Building");
+		assertEquals(test, true);
+	}
+	
+	@Test
+	public void testRepoCommand4() throws Exception {
+		String[] s = new String[] {"repo","all"};
+		String result = getFinalResult(s);
+		boolean test = result.contains("Building");
+		assertEquals(test, true);
+	}
+	
+	@Test
+	public void testFail() throws Exception {
+		String[] s = new String[] {"repo","fail"};
+		String result = getFinalResult(s);
+		boolean test = result.contains("Building");
+		assertEquals(test, false);
 	}
 }

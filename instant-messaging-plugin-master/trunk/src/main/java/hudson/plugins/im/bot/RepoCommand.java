@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-
 import hudson.DescriptorExtensionList;
 import hudson.Extension;
 import hudson.model.AbstractBuild;
@@ -24,9 +23,7 @@ public class RepoCommand extends AbstractSourceQueryCommand {
 	private static final String HELP = SYNTAX + " - show the repository details of build history";
 	public final String REPO = "repo";
 	HashMap<String, Integer> cmd_list;
-	static int number = 0;
-	static int counter = 20;
-    static int flag = 1;
+
 	@Override
 	public Collection<String> getCommandNames() {
 		return Collections.singleton("repo");
@@ -35,66 +32,57 @@ public class RepoCommand extends AbstractSourceQueryCommand {
 	@Override
 	protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {
 		
-		if (cmd_list == null) {
-			cmd_list = new HashMap<String, Integer>();
-
-			cmd_list.put("show", 1);
-
-			cmd_list.put("reponumber", 2);
-
-			cmd_list.put("all", 3);
-		}
+		int number = 0;
+		int counter = 5;
+	    int flag = 1;
+	    boolean lock = false;
+	    
+		isNull(); //Initialize
 
 		if (args.length == 1) {
-			counter = 20;
+			counter = 5;
 			flag = 1;
+			lock = false;
+			number = 0;
 		} else if (args.length >= 2) {
 			int cmd_idx = cmd_list.get(args[1]) == null ? 0 : cmd_list.get(args[1]);
 			switch (cmd_idx) {
 			case 1:
 				if (args.length == 2){
-					counter=20;
+					counter=5;
 					flag=1;
+					lock=false;
+					number = 0;
 				}
 				else{
 					counter = Integer.parseInt(args[2]);
 					flag=1;
+					lock=false;
+					number=0;
 				}
 				break;
 			case 2:
 				number = Integer.parseInt(args[2]);
-				flag=1;
+				flag=0;
+				lock=true;
+				counter=5;
 				break;
 			case 3:
+				counter=5;
 				flag=0;
+				lock=false;
+				number=0;
 				break;
 			default:
 				return getAvailableCommand();
 			}
 		} 
-		//StringBuilder msg = new StringBuilder(32);
+
 		Collection<AbstractBuild<?,?>> builds = new ArrayList<AbstractBuild<?,?>>();
 		
-		// commit authors and messages
-//		AbstractBuild<?, ?> lastBuild = projects.getLastBuild();
-//		for (Entry entry : lastBuild.getChangeSet()) {
-//			msg.append("* " + entry.getAuthor()).append(": ").append(entry.getMsg());
-//		}
 		
-		// get all builds
-        // if this command is slow may need to put limiter on while loop
-		String model_root ="";
-		
+		//get all the builds
         for (AbstractProject<?, ?> abProj: projects) {
-        	// test svn url
-        	//SCM scm = abProj.getScm();
-//        	RepositoryBrowser<?> repo_bowser = scm.getBrowser();
-//        	descriptor_list = repo_bowser.all();
-        	//String repo_bowser = scm.getBrowser().toString();
-        	
-        	//important
-        	//model_root = scm.getModuleRoot(workspace, build);
-        	//model_root = abProj.getModuleRoot().toString();
         	        	
             AbstractBuild<?,?> tempbuild = abProj.getLastBuild();
             while(tempbuild != null){
@@ -106,45 +94,47 @@ public class RepoCommand extends AbstractSourceQueryCommand {
         StringBuilder msg = new StringBuilder(builds.size());
 
         for (AbstractBuild<?, ?> abBuild: builds) {
-            msg.append("Building #: ").append(abBuild.getNumber()); // job number
-            
-            counter--;
-            
-            // temp counter and flag
-            if (counter<=0 && flag==1){
-            	//continue;
+        	
+        	if (counter<=0 && flag==1){
             	break;
             }
-            
-            //.append(" (")
-              //  .append(abBuild.getTimestampString()).append(" ago): ").append(abBuild.getResult())
-            
-            //    .append(System.getProperty("line.separator"));
-         //try to get the repourl of build;
-//            FilePath[] fpp = abBuild.getModuleRoots();
-//            for (FilePath fp : fpp){
-//            	msg.append(fp.toString());//^^
-//            }
-            
-            // test svn url
-//            msg.append(descriptor_list.toString());
-                                   
+        	counter--;
+        	if(lock==false){
+        		msg.append("Building #: ").append(abBuild.getNumber()); 
+        	}
+             
             for (Entry entry : abBuild.getChangeSet()) {
-            	msg.append("\nRevision:"+entry.getCommitId()); // version number
-            	msg.append(entry.getAffectedPaths());// a list of changed file
-            	//msg.append(entry.getAffectedFiles());// ?
-            	msg.append("\nmodel_root:"+model_root);
-            	msg.append("\nrootDir:"+entry.getParent().getRun().getRootDir().toString());
-            	msg.append("\ngetUrl:"+entry.getParent().getRun().getUrl());
-            	//msg.append("\nsearchUrl"+entry.getParent().getRun().getSearchUrl());
-            	msg.append("\nBuildStatusUrl:"+entry.getParent().getRun().getBuildStatusUrl());
-            	
-            	
-    			msg.append("\n* " + entry.getAuthor()).append(": ").append(entry.getMsg());
+            	if((Integer.parseInt(entry.getCommitId()) == number) || (lock==false)) {
+            		if(lock){
+            			msg.append("Building #: ").append(abBuild.getNumber()); 
+            		}
+            		msg.append("\nRevision: "+entry.getCommitId()); 
+            		msg.append(entry.getAffectedPaths());           	
+            		msg.append("\n* " + entry.getAuthor()).append(": ").append(entry.getMsg());
+            		if(lock) {
+            			break;
+            		}
+            	}
     		}
-            msg.append(System.getProperty("line.separator"));
+            msg.append("\n");
+        }
+        
+        if(!msg.toString().contains("Building")) {
+        	msg.append("Please try again!");
         }
         return msg;
+	}
+
+	private void isNull() {
+		if (cmd_list == null) {
+			cmd_list = new HashMap<String, Integer>();
+
+			cmd_list.put("show", 1);
+
+			cmd_list.put("reponumber", 2);
+
+			cmd_list.put("all", 3);
+		}
 	}
 
 	@Override

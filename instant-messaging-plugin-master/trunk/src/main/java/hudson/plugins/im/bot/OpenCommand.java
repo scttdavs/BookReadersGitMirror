@@ -15,11 +15,33 @@ import hudson.FilePath;
 import hudson.model.AbstractProject;
 import hudson.plugins.im.Sender;
 import jenkins.model.Jenkins;
-/*Author Zehao
- Yuhang Wang */
+
+/**
+ * Open the file or directory in specific project workspace.
+ * 
+ * @author Zehao Song, Yuhang Wang
+ *
+ */
 
 @Extension
 public class OpenCommand extends AbstractTextSendingCommand {
+	/**
+	 * A inner nested helper class for OpenCommand.
+	 * The class is simply used for transfer data:
+	 * 		Project Name
+	 * 		Parent Path
+	 * 		All Valid FilePath objects
+	 * 		
+	 * 		The reason why parse failed.
+	 * 
+	 * 
+	 * 
+	 * The parseMessage() method is used to convert the original message into a MsgWrapper instance.
+	 * The handler() method will use MsgWrapper to generate the final reply string.
+	 * 
+	 * @author Zehao
+	 *
+	 */
 	private class MsgWrapper {
 		private String projectName;
 		private String parentPath;
@@ -80,6 +102,12 @@ public class OpenCommand extends AbstractTextSendingCommand {
 		return Collections.singleton("open");
 	}
 
+	/**
+	 * Parse the original message into a MsgWrapper object. 
+	 * 
+	 * @param args  The original message
+	 * @return 
+	 */
 	private MsgWrapper parseMessage(String[] args) {
 		// Find the proper project
 		AbstractProject<?, ?> proj = getJobProvider().getJobByNameOrDisplayName(args[1]);
@@ -126,6 +154,12 @@ public class OpenCommand extends AbstractTextSendingCommand {
 		}
 	}
 
+	/**
+	 * Generate the reply string based on the message.
+	 * 
+	 * @param msg
+	 * @return
+	 */
 	private String handler(MsgWrapper msg) {
 		// Parent File Path Wrong
 		if (!msg.isValid()) {
@@ -149,8 +183,13 @@ public class OpenCommand extends AbstractTextSendingCommand {
 				if (destination.isDirectory()) {
 					// List the directory and file of workspace
 					List<FilePath> subDirs = destination.list();
+					List<String> dirsName = new ArrayList<>();
 					for (FilePath file : subDirs) {
-						res.append(file2Str(file));
+						dirsName.add(file2Str(file));
+					}
+					Collections.sort(dirsName);
+					for ( String name : dirsName ) {
+						res.append(name);
 					}
 					return res.toString();
 				} else {
@@ -208,16 +247,43 @@ public class OpenCommand extends AbstractTextSendingCommand {
 		return sender + ": syntax is: '" + cmd + SYNTAX + "'";
 	}
 
+	/*
+	 *  The following two method will be hijacked by spy() method in the test
+	 *  Don't change the scope of these two method!
+	 *  getBaseURL(), getWorkSpace()
+	 *  
+	 */
+	/** Get the root URL of Jenkins
+	 * 
+	 * @return  "http://domain:port/"
+	 */
 	String getBaseURL() {
 		return Jenkins.getInstance().getRootUrl();
 	}
 
+	/** Get the Workspace of a specific project
+	 * 
+	 * @param proj   The project, whose workspace is retrieved.
+	 * @return  The FilePath represents the Root Directories 
+	 */
 	FilePath getWorkSpace(AbstractProject<?, ?> proj) {
 		return proj.getLastBuild().getWorkspace();
 	}
 
-	// Helper Methods
-	// Separate parent path and destination name
+	/* 
+	 * Utility Methods
+	 * 
+	 */
+	/**
+	 * Separate parent path and destination name.
+	 * This method is particular designed for incomplete path name. 
+	 * The parent path, which is accurate and complete, is used to find the parent FilePath.
+	 * The file name, which might be incomplete, is used for searching FilePath in the list of parent subdirs/files.
+	 * 
+	 * @param path  The original path string, e.g. "path/to/file"
+	 * 
+	 * @return  A string array consist of two string, ["path/to","file"]
+	 */
 	private String[] grabPath(String path) {
 		Pattern pattern = Pattern.compile("^(/)?(.*)/([^/]+)/?$");
 		Matcher m = pattern.matcher(path);
@@ -227,12 +293,20 @@ public class OpenCommand extends AbstractTextSendingCommand {
 		return new String[] { "", path.replaceAll("/", "") };
 	}
 
-	// Convert the file name to String. Different Format for directory and file
+	/** Convert the file name to String. Different Format for directory and file
+	 * 
+	 * @param f  The FilePath object to convert
+	 * @return   "" for hidden file/directories, "[name] " for directories, "name " for files 
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
 	private String file2Str(FilePath f) throws IOException, InterruptedException {
+		String name = f.getName();
+		if ( name.startsWith(".") ) return ""; // Hide the hidden file
 		if (f.isDirectory()) {
-			return "[" + f.getName() + "] ";
+			return "[" + name + "] ";
 		} else {
-			return f.getName() + " ";
+			return name + " ";
 		}
 	}
 }

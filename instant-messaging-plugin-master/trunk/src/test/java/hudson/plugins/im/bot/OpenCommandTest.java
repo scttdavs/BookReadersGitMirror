@@ -177,6 +177,16 @@ public class OpenCommandTest {
 		assertTrue( reply1.indexOf("fileTest") >= 0 );
 	}
 	
+	
+	@Test
+	public void testSortFileName() {
+		String[] args1 = { "open", "proj1", "test1/test2" };
+		String reply1 = spy.getReply(null, sender, args1);
+		String[] res = reply1.split("[\\s]+");
+		assertEquals(res[0],"[fileTest]");
+		assertTrue(res[1].startsWith("fileInLevel3"));
+		assertTrue(res[2].startsWith("fileTest"));
+	}
 	// Utilities Methods
 
 	private static String createString(int n) {

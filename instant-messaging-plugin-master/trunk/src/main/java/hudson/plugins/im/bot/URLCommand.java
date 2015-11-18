@@ -15,71 +15,29 @@ public class URLCommand extends AbstractTextSendingCommand {
 	private static final String HELP = SYNTAX + " - retrieve the spesific URL for Jenkins";
 
 	HashMap<String, Integer> cmd_list;
+	
+	public URLCommand() {
+		createCommendList();
+	}
 
 	@Override
 	public Collection<String> getCommandNames() {
 		return Collections.singleton("geturl");
 	}
+	
+	
 
 	@Override
 	protected String getReply(Bot bot, Sender sender, String[] args) {
 		if (cmd_list == null) {
-			cmd_list = new HashMap<String, Integer>();
-
-			cmd_list.put("base", 1);
-			cmd_list.put("root", 1);
-
-			cmd_list.put("configure", 2);
-			cmd_list.put("conf", 2);
-
-			cmd_list.put("log", 3);
-
-			cmd_list.put("plugin", 4);
-			cmd_list.put("plugins", 4);
-            
-            cmd_list.put("security", 5);
-            cmd_list.put("sec", 5);
-            
-            cmd_list.put("statistic", 6);
-            cmd_list.put("stat", 6);
-            
-            cmd_list.put("script", 7);
-            cmd_list.put("scripts", 7);
-            
-            cmd_list.put("node", 8);
-            cmd_list.put("nodes", 8);
-            
-            cmd_list.put("user", 9);
-            cmd_list.put("users", 9);
-            
+			createCommendList();          
 		}
 
 		if (args.length == 1) {
 			return getBaseURL();
 		} else if (args.length == 2) {
 			int cmd_idx = cmd_list.get(args[1]) == null ? 0 : cmd_list.get(args[1]);
-			switch (cmd_idx) {
-			case 1:
-				return getBaseURL();
-			case 2:
-				return getGlobalConfigureURL();
-			case 3:
-				return getGlobalSystemLogURL();
-			case 4:
-				return getPluginManager();
-            case 5:
-                return getSecurity();
-            case 6:
-                return getLoadstatistics();
-            case 7:
-                return getScriptConsole();
-            case 8:
-                return getNodes();
-            case 9:
-                return getUsers();
-			default:
-				return getAvailableCommand();
-			}
+			return executeCommand(cmd_idx);
 		} else {
 			return giveSyntax(sender.getNickname(), args[0]);
 		}
@@ -143,4 +101,53 @@ public class URLCommand extends AbstractTextSendingCommand {
 		}
 		return buf.substring(0, buf.length() - 2);
 	}
+	
+	private void insertData(int seq, String name1, String name2) {
+		if(name1.length() > 0) {
+			cmd_list.put(name1, seq);
+		}
+		if(name2.length() > 0) {
+			cmd_list.put(name2, seq);
+		}
+	}
+	
+	private String executeCommand(int cmd_idx) {
+		switch (cmd_idx) {
+		case 1:
+			return getBaseURL();
+		case 2:
+			return getGlobalConfigureURL();
+		case 3:
+			return getGlobalSystemLogURL();
+		case 4:
+			return getPluginManager();
+        case 5:
+            return getSecurity();
+        case 6:
+            return getLoadstatistics();
+        case 7:
+            return getScriptConsole();
+        case 8:
+            return getNodes();
+        case 9:
+            return getUsers();
+		default:
+			return getAvailableCommand();
+		}
+	}
+	
+	private void createCommendList() {
+		cmd_list = new HashMap<String, Integer>();
+		
+		insertData(1, "base", "root");
+		insertData(2, "configure", "conf");
+		insertData(3, "log", "");
+		insertData(4, "plugin", "plugins");
+		insertData(5, "security", "sec");
+		insertData(6, "statistic", "stat");
+		insertData(7, "script", "scripts");
+		insertData(8, "nodes", "node");
+		insertData(9, "user", "users");   
+	}
 }
+
