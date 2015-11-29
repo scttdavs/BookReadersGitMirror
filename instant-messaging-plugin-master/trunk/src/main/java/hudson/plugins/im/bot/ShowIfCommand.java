@@ -33,8 +33,8 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
         return Arrays.asList("showIf","si");
     }
 
-    private CharSequence distroToFilter(ArrayList<ArrayList<String>> list, String[] args, Collection<AbstractBuild<?,?>> builds) {
-        // iterate over the query chunks
+    protected ArrayList<ArrayList<String>> queryGovernor(ArrayList<ArrayList<String>> list) {
+        /* add a governor to the query output if none are specified */
     	boolean flag = false;
     	for (int i = 0; i < list.size(); i++) {
     		flag = flag || list.get(i).get(0) == "build"; 
@@ -45,56 +45,137 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
     		temp.add("10");
     		list.add(temp);
     	}
+
+        return list;
+    }
+
+    private CharSequence distroToFilter(ArrayList<ArrayList<String>> list, String[] args, Collection<AbstractBuild<?,?>> builds) {
+        
+        StringBuilder msg = new StringBuilder(builds.size());
+        
+        /* govern the query */
+        int init_query_size = list.size();
+        this.queryGovernor(list);
+        int governed_query_size = list.size();
+
         for (int i = 0; i < list.size(); i++) {
-            switch ((list.get(i)).get(0)) {
-                case "user":
-                    if (list.get(i).size() <= 1) {
-                        return "Malformed size filter.";
-                    }
-                    builds = userFilter(builds,(list.get(i)).get(1));
-                    break;
-                case "date":
-                    if (list.get(i).size() <= 2) {
-                        return "Malformed date filter.";
-                    }
-                    builds = dateFilter(builds,(list.get(i)).get(2),(list.get(i)).get(1));
-                    break;
-                case "project":
-                    if (list.get(i).size() <= 1) {
-                        return "Malformed project filter.";
-                    }
-                    builds = projectFilter(builds,(list.get(i)).get(1));
-                    break;
-                case "build":
-                    if (list.get(i).size() <= 1) {
-                        return "Malformed build filter.";
-                    }
-                    builds = buildFilter(builds,(list.get(i)).get(1));
-                    break;
-                case "jobs":
-                    if (list.get(i).size() <= 2) {
-                        return "Malformed job filter.";
-                    }
-                    builds = jobsFilter(builds,(list.get(i)).get(2),(list.get(i)).get(1));
-                    break;
-                default: // add evil message
-                    return "Malformed command.";
+            ArrayList<String> query = list.get(i);
+            String query_type = query.get(0);
+
+            // apply showif filters here
+            if(!checkQuery(query, query_type)){
+                msg.append("Malformed Command! "+query_type+"\n");
+                System.out.println("Malformed Command: "+query_type+"\n");
+                continue;
             }
+            
+            builds = this.runQuery(query, query_type , builds);
+
             if (builds.isEmpty()) {
                 StringBuilder temp = new StringBuilder(32);
                 temp.append("No Builds Found! \n");
                 return temp;
             }
         }
-        StringBuilder msg = new StringBuilder(builds.size());
         for (AbstractBuild<?, ?> abBuild: builds) {
             msg.append("last build: ").append(abBuild.getNumber()).append(" (")
                 .append(abBuild.getTimestampString()).append(" ago): ").append(abBuild.getResult())
                 //.append(": ").append(MessageHelper.getBuildURL(abBuild))
                 .append(System.getProperty("line.separator"));
         }
+
+        if(init_query_size != governed_query_size) {
+            msg.append("\nOUTPUT IS GOVERNED TO 10 ITEMS!\n");
+        }
+
+
         return msg;
     }
+
+    protected boolean malformed_test(ArrayList<String> query_terms, int size) {
+        if (query_terms.size() <= size) { 
+            return true; 
+        } else { 
+            return false; 
+        }
+    }
+
+    protected boolean checkQuery(ArrayList<String> query, String query_type) {
+        // each .get(i) call on the query is accessing a query argument
+        switch (query_type) {
+            case "user":
+                if (malformed_test(query, 1)) {
+                    return false;
+                } 
+                break;
+            case "date":
+                if (malformed_test(query, 2)) {
+                    return false;
+                } 
+                break;
+            case "project":
+                if (malformed_test(query, 1)) {
+                    return false;
+                }
+                break;
+            case "build":
+                if (malformed_test(query, 1)) {
+                    return false;
+                }
+                break;
+            case "jobs":
+                if (malformed_test(query, 2)) {
+                    return false;
+                }
+                break;
+            default: // add evil message
+                return false;
+        }
+
+        return true;
+    }
+
+    protected Collection<AbstractBuild<?,?>> runQuery(ArrayList<String> query, String query_type, Collection<AbstractBuild<?,?>> builds) {
+
+        // each .get(i) call on the query is accessing a query argument
+        switch (query_type) {
+            case "user":
+                if (malformed_test(query, 1)) {
+                    return builds;
+                } 
+                builds = userFilter(builds,query.get(1));
+                break;
+            case "date":
+                if (malformed_test(query, 2)) {
+                    return builds;
+                } 
+                    builds = dateFilter(builds,query.get(2),query.get(1));
+                break;
+            case "project":
+                if (malformed_test(query, 1)) {
+                    return builds;
+                }
+                builds = projectFilter(builds,query.get(1));
+                break;
+            case "build":
+                if (malformed_test(query, 1)) {
+                    return builds;
+                }
+                builds = buildFilter(builds,query.get(1));
+                break;
+            case "jobs":
+                if (malformed_test(query, 2)) {
+                    return builds;
+                }
+                builds = jobsFilter(builds,query.get(2),query.get(1));
+                break;
+            default: // add evil message
+                    return builds;
+        }
+
+        return builds;
+    }
+
 
     @Override
     protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {

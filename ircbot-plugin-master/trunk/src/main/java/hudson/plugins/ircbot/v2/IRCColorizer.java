@@ -97,9 +97,13 @@ public class IRCColorizer {
     	}
     }
     
-    
-    // set the user defined color for specific string,
-    // will be called by onMessage() method in PircListener.java
+    /**
+     * set the user defined color for specific string,
+     * will be called by onMessage() method in PircListener.java
+     * @param nickname user's nickname
+     * @param pattern patterns that user wants to change, it also includes regex
+     * @param color e.g RED, BLUE, GREEN
+     */
     public static void setter(String nickname, String pattern, String color) 
     {
         // get hashmap for userid or create a new one

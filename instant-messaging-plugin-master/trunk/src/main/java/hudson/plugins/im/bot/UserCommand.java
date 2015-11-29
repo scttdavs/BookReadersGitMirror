@@ -25,17 +25,32 @@ public class UserCommand extends AbstractSourceQueryCommand {
 	private static final String SYNTAX = " <username>";
 	private static final String HELP = SYNTAX + " - prints builds processed by a Jenkins user";
 
+	// if not work, read file
+	private static int defaultNumber = 5;
+
 	@Override
 	public Collection<String> getCommandNames() {
 		return Collections.singleton("userHistory");
 	}
 
+	private void changeDefaultNumber(int newDefualtNumber) {
+		defaultNumber = newDefualtNumber;
+	}
+
+	private int getDefaultNumber() {
+		return defaultNumber;
+	}
+
 	@Override
 	protected String getReply(Bot bot, Sender sender, String[] args) {
 		if (args.length < 2) {
-			return giveSyntax(sender.getNickname(), args[0]);
+			return giveSyntax(sender.getNickname(), args[0], 1);
+		} else if (args.length > 4) {
+			return giveSyntax(sender.getNickname(), args[0], 2);
 		}
+		
 		String userName = args[1];
+
 		User user = User.get(userName, false, Collections.emptyMap());
 		if (user != null) {
 
@@ -69,6 +84,21 @@ public class UserCommand extends AbstractSourceQueryCommand {
 
 	@Override
 	protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {
+		int counter = 0;
+		if (args.length == 2) {
+			// UserHistory jchen186
+			counter = getDefaultNumber();
+		} else if (args.length == 3) {
+			// UserHistory jchen186 5
+			counter = Integer.parseInt(args[2]);
+		} else if (args.length == 4) {
+			// UserHistory jchen186 default 2
+			if (args[2].equals("default") || args[2].equals("Default")) {
+				changeDefaultNumber(Integer.parseInt(args[3]));
+			}
+		} else if (args.length > 4) {
+			// error
+		}
 
 		// convert projects Collection to ArrayList
 		ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
@@ -91,8 +121,12 @@ public class UserCommand extends AbstractSourceQueryCommand {
 			return temp;
 		}
 		StringBuilder msg = new StringBuilder(builds.size());
+		// for (AbstractBuild<?, ?> abBuild : builds) {
 		for (AbstractBuild<?, ?> abBuild : builds) {
+			if (counter <= 0)
+				break;
 			message(msg, abBuild);
+			counter--;
 		}
 		return msg;
 	}
@@ -116,8 +150,14 @@ public class UserCommand extends AbstractSourceQueryCommand {
 		return null;
 	}
 
-	private String giveSyntax(String sender, String cmd) {
-		return sender + ": syntax is: '" + cmd + SYNTAX + "'";
+	private String giveSyntax(String sender, String cmd, int status) {
+		String retString = "";
+		if (status == 1)
+			retString = sender + ": syntax is: '" + cmd + SYNTAX + "'";
+		else if (status == 2)
+			retString = sender + ": syntax is: '" + cmd + SYNTAX + "<Number>" + "' or '" + cmd + SYNTAX
+					+ "default <Number>" + "'";
+		return retString;
 	}
 
 	@Override

@@ -224,4 +224,21 @@ public class ShowIfCommandTest {
         boolean test = result.startsWith("last build:");
         assertEquals(test, true);
     }
+    
+    @Test
+    public void ten_build_Test() {
+     	@SuppressWarnings({ "rawtypes" })
+        Calendar date = Calendar.getInstance();
+        date.set(2015,1,1,1,0,0);
+        AbstractProject project = createProject(date,0,"test");
+        ArrayList<AbstractProject<?,?>> list = new ArrayList<AbstractProject<?,?>>();
+        list.add(project);
+        ShowIfCommand command = new ShowIfCommand();
+        String result = command.getMessageForJob(list,
+                new String[] { "project","test"}).toString();
+
+        // does string start with last build? If so then we know it has returned a build
+        boolean test = result.endsWith("OUTPUT IS GOVERNED TO 10 ITEMS!\n");
+        assertEquals(test, true);
+    }
 }

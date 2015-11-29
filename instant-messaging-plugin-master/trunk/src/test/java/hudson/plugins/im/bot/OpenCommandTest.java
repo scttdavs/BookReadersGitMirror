@@ -47,7 +47,7 @@ public class OpenCommandTest {
 	private Sender sender = new Sender("tester");
 	private OpenCommand cmd;
 	private OpenCommand spy;
-	private FilePath root, dir1, dir2, dir3, file1, file2, file3, file4;
+	private FilePath root, dir1, dir2, dir3, file1, file2, file3, file4, hiddenDir, hiddenFile;
 	private JobProvider jobProvider = mock(JobProvider.class);
 	private AbstractProject<?, ?> proj1 = mockProject(jobProvider, "proj1");
 
@@ -55,6 +55,7 @@ public class OpenCommandTest {
 	public void initialize() {
 		// Create The work space
 		root = new FilePath(new File("root"));
+		hiddenDir = new FilePath(root, ".svn");
 		dir1 = new FilePath(root, "test1");
 		dir2 = new FilePath(dir1, "test2");
 		dir3 = new FilePath(dir2, "fileTest");
@@ -63,6 +64,7 @@ public class OpenCommandTest {
 			file2 = dir1.createTextTempFile("fileInLevel2", "txt", shortFile);
 			file3 = dir2.createTextTempFile("fileInLevel3", "txt", longFile);
 			file4 = dir2.createTextTempFile("fileTest", "txt", shortFile);
+			hiddenFile = hiddenDir.createTextTempFile("fileHidden", "txt", shortFile);
 			dir3.mkdirs();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -132,7 +134,7 @@ public class OpenCommandTest {
 	@Test
 	public void testPathToDir() {
 		// right path
-		String[] args1 = { "open", "proj1", "test1" };
+		String[] args1 = { "open", "proj1", "/test1" };
 		String reply1 = spy.getReply(null, sender, args1);
 		String[] res = reply1.split("[\\s]+");
 		for (String file : res) {
@@ -144,7 +146,7 @@ public class OpenCommandTest {
 		}
 
 		// wrong path
-		String[] args2 = { "open", "proj1", "test3" };
+		String[] args2 = { "open", "proj1", "/test3" };
 		String reply2 = spy.getReply(null, sender, args2);
 		assertEquals(reply2, "Directory/File Not Found!!");
 	}
@@ -152,24 +154,30 @@ public class OpenCommandTest {
 	@Test
 	public void testPathToFile() {
 		// right path to Short File
-		String[] args1 = { "open", "proj1", "test1/fileInLevel2" };
+		String[] args1 = { "open", "proj1", "/test1/fileInLevel2" };
 		String reply1 = spy.getReply(null, sender, args1);
 		assertEquals(reply1,shortFile);
-		
+	}
+	
+	@Test
+	public void testPathToFileLong() {
 		// Right Path to Long File
-		String[] args2 = { "open", "proj1", "test1/test2/fileInLevel3" };
+		String[] args2 = { "open", "proj1", "/test1/test2/fileInLevel3" };
 		String reply2 = spy.getReply(null, sender, args2);
 		assertTrue( reply2.startsWith("http://domain:port/job/proj1/ws/test1/test2/fileInLevel3") );
-		
+	}
+	
+	@Test
+	public void testPathToFileWrong() {
 		// Wrong Path
-		String[] args3 = { "open", "proj1", "test1/test2/fileInLevel5" };
+		String[] args3 = { "open", "proj1", "/test1/test2/fileInLevel5" };
 		String reply3 = spy.getReply(null, sender, args3);
 		assertEquals(reply3, "Directory/File Not Found!!");
 	}
 
 	@Test
 	public void testMultiFileFound() {
-		String[] args1 = { "open", "proj1", "test1/test2/file" };
+		String[] args1 = { "open", "proj1", "/test1/test2/file" };
 		String reply1 = spy.getReply(null, sender, args1);
 		assertTrue( reply1.startsWith("Available Directory/File Name:\n") );
 		assertTrue( reply1.indexOf("fileInLevel3") >= 0 );
@@ -180,13 +188,47 @@ public class OpenCommandTest {
 	
 	@Test
 	public void testSortFileName() {
-		String[] args1 = { "open", "proj1", "test1/test2" };
+		String[] args1 = { "open", "proj1", "/test1/test2" };
 		String reply1 = spy.getReply(null, sender, args1);
 		String[] res = reply1.split("[\\s]+");
 		assertEquals(res[0],"[fileTest]");
 		assertTrue(res[1].startsWith("fileInLevel3"));
 		assertTrue(res[2].startsWith("fileTest"));
 	}
+	
+	@Test
+	public void testFindFiles() {
+		String[] args1 = { "open", "proj1", "fileInLevel3" };
+		String reply1 = spy.getReply(null, sender, args1);
+		String[] reply1s = reply1.split("\\n");
+		assertEquals( reply1s[0], "Files Found:" );
+		assertTrue( reply1s[1].startsWith("http://domain:port/job/proj1/ws/root/test1/test2/fileInLevel3") );
+	}
+	
+	@Test
+	public void testFindFilesMultiple() {
+		// test finding multiple file results
+		String[] args3 = { "open", "proj1", "file" };
+		String reply3 = spy.getReply(null, sender, args3);
+		String[] reply3s = reply3.split("\\n");
+		assertEquals(5, reply3s.length);
+	}
+	
+	@Test
+	public void testFindFilesWrong() {
+		// test finding no files
+		String[] args2 = { "open", "proj1", "fileInLevel4" };
+		String reply2 = spy.getReply(null, sender, args2);
+		assertEquals(reply2,"Directory/File Not Found!!");
+	}
+	
+	@Test
+	public void testHiddenDirectories() {
+		String[] args1 = { "open", "proj1", "fileHidden" };
+		String reply1 = spy.getReply(null, sender, args1);
+		assertEquals("Directory/File Not Found!!", reply1);
+	}
+	
 	// Utilities Methods
 
 	private static String createString(int n) {
@@ -221,4 +263,5 @@ public class OpenCommandTest {
 		doReturn(res).when(proj).getLastBuild();
 		return res;
 	}
+	
 }

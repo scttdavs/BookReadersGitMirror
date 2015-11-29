@@ -6,7 +6,10 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,7 +49,10 @@ public class OpenCommand extends AbstractTextSendingCommand {
 		private String projectName;
 		private String parentPath;
 		private List<FilePath> destinations;
-		private Boolean isValid;
+		private boolean isFindFile;
+		private Map<FilePath,String> destPaths;
+		
+		private boolean isValid;
 		private String reason;
 
 		MsgWrapper(String projectName, String parentPath) {
@@ -54,14 +60,30 @@ public class OpenCommand extends AbstractTextSendingCommand {
 			this.parentPath = parentPath;
 			destinations = new ArrayList<FilePath>();
 			this.isValid = true;
+			this.isFindFile = false;
 		}
 
+		MsgWrapper(String projectName,Map<FilePath,String> destPaths) {
+			this.projectName = projectName;
+			this.destPaths = destPaths;
+			this.isValid = true;
+			this.isFindFile = true;
+		}
+		
 		MsgWrapper(String reason) {
 			this.isValid = false;
 			this.reason = reason;
+			this.isFindFile = false;
 		}
 
-		Boolean isValid() {
+		boolean isFindFile() {
+			return isFindFile;
+		}
+		Map<FilePath,String> getDestPaths(){
+			return destPaths;
+		}
+		
+		boolean isValid() {
 			return isValid;
 		}
 
@@ -120,7 +142,19 @@ public class OpenCommand extends AbstractTextSendingCommand {
 			if (rootDir == null)
 				return new MsgWrapper("Cannot Get WorkSpace!");
 
-			// Find the directory or file
+			// Find Command
+			if ( args.length > 2 && args[2].indexOf("/") == -1 ) {
+				Map<FilePath,String> destPaths = new HashMap<>();
+				traverseFilePath( rootDir ,args[2],"",destPaths);
+				if ( destPaths.size() == 0 ) {
+					return new MsgWrapper("Directory/File Not Found!!");
+				} else {
+					MsgWrapper msg = new MsgWrapper(args[1],destPaths);
+					return msg;
+				}
+			}
+			
+			// LS Command
 			String[] path = grabPath((args.length < 3) ? "" : args[2]);
 			FilePath parent = new FilePath(rootDir, path[0]);
 			String name = path[1];
@@ -137,8 +171,16 @@ public class OpenCommand extends AbstractTextSendingCommand {
 					}
 				}
 
+				// Find files
 				if (dests.size() == 0) {
-					return new MsgWrapper("Directory/File Not Found!!");
+					Map<FilePath,String> destPaths = new HashMap<>();
+					traverseFilePath(parent,name,"",destPaths);
+					if ( destPaths.size() == 0 ) {
+						return new MsgWrapper("Directory/File Not Found!!");
+					} else {
+						MsgWrapper msg = new MsgWrapper(args[1],destPaths);
+						return msg;
+					}
 				} else {
 					MsgWrapper msg = new MsgWrapper(args[1], path[0]);
 					msg.addDestination(dests);
@@ -164,6 +206,16 @@ public class OpenCommand extends AbstractTextSendingCommand {
 		// Parent File Path Wrong
 		if (!msg.isValid()) {
 			return msg.getReason();
+		}
+		// Find File 
+		if ( msg.isFindFile() ) {
+			StringBuilder res = new StringBuilder();
+			res.append("Files Found:\n");
+			Map<FilePath,String> destPaths = msg.getDestPaths();
+			for ( Entry<FilePath, String> entry : destPaths.entrySet() ) {
+				res.append( getBaseURL() + "job/" + msg.getProjectName() + "/ws" + entry.getValue() +"\n");
+			}
+			return res.toString();
 		}
 		int destNum = msg.getDestNum();
 		try {
@@ -203,8 +255,10 @@ public class OpenCommand extends AbstractTextSendingCommand {
 						}
 						return res.toString();
 					} else { // return the URL to the file
-						return getBaseURL() + "job/" + msg.getProjectName() + "/ws/" + msg.getParentPath() + "/"
+						String temp = "job/" + msg.getProjectName() + "/ws/" + msg.getParentPath() + "/"
 								+ destination.getName();
+						temp = temp.replaceAll("//", "/");
+						return getBaseURL() + temp;
 					}
 				}
 			}
@@ -274,6 +328,22 @@ public class OpenCommand extends AbstractTextSendingCommand {
 	 * Utility Methods
 	 * 
 	 */
+	private void traverseFilePath( FilePath root, String name, String parentPath, Map<FilePath,String> destPaths ) {
+		try {
+			
+			if ( root.isDirectory() && !root.getName().startsWith(".")) {
+				for ( FilePath f : root.list() )
+					traverseFilePath(f,name,parentPath+"/"+root.getName(),destPaths);
+			} else {
+				if ( root.getName().startsWith( name ) ) {
+					destPaths.put(root,parentPath+"/"+root.getName());
+				}
+			}
+		} catch (IOException | InterruptedException e) {
+			return;
+		}
+	}
+	
 	/**
 	 * Separate parent path and destination name.
 	 * This method is particular designed for incomplete path name. 
