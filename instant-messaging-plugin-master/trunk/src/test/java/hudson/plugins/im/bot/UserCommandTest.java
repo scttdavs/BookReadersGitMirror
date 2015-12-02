@@ -130,10 +130,29 @@ public class UserCommandTest {
 	public void testNumberSuccess() throws Exception {
 		String[] s = new String[] {"userHistory","superman","1"};
 		String result = getFinalResult(s);
-		System.out.println(result);
+		//System.out.println(result);
 		boolean test = result.contains("null");
 		assertEquals(test, true);
 	}
+	
+	@Test
+	public void testWithoutNumberArgument() throws Exception {
+		String[] s = new String[] {"userHistory","superman"};
+		String result = getFinalResult(s);
+		int len = result.split("\r\n|\r|\n").length;
+		// defualtNumber to display is 5 by default
+		assertEquals(len, 5);
+	}
+	@Test
+	public void testWithNumberArgument() throws Exception {
+		String[] s = new String[] {"userHistory","superman","Default","3"};
+		String result = getFinalResult(s);
+		//System.out.println(result);
+		int len = result.split("\r\n|\r|\n").length;
+		// defualtNumber to display is 5 by default
+		assertEquals(len, 3);
+	}
+	
 
 //	@SuppressWarnings({ "unchecked", "rawtypes" })
 //	@Test
@@ -158,21 +177,22 @@ public class UserCommandTest {
 //		}
 //
 //		Sender sender = new Sender("tester");
-//		String[] args = { "userHistory", "superman" };
+//		String[] args = { "userHistory", "superman","default","3" };
 //
 //		JobProvider jobProvider = mock(JobProvider.class);
 //		UserCommand cmd = new UserCommand();
 //		cmd.setJobProvider(jobProvider);
 //		ArrayList<AbstractProject<?, ?>> list = new ArrayList();
 //		list.add(project);
-//		CharSequence reply = cmd.getMessageForJob(list, args);
-//		String replyStr = reply.toString();
-//		String expectedStr = "null (null ago): null: ";
-//		expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + "0\n";
-//		for (int i = 3; i < 50; i += 3) {
-//			expectedStr += "null (null ago): null: ";
-//			expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + i + "\n";
-//		}
-//		assertEquals(expectedStr, replyStr);
+//		String reply = cmd.getMessageForJob(list, args).toString();
+//		System.out.println("hello"+reply);
+		//String replyStr = reply.toString();
+		//String expectedStr = "null (null ago): null: ";
+		//expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + "0\n";
+		//for (int i = 3; i < 10; i += 3) {
+		//	expectedStr += "null (null ago): null: ";
+		//	expectedStr += String.valueOf(Hudson.getInstance().getRootUrl()) + i + "\n";
+	//	}
+		//assertEquals(expectedStr, replyStr);
 //	}
 }

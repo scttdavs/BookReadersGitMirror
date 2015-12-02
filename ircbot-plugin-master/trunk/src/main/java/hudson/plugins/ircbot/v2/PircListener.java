@@ -153,6 +153,9 @@ public class PircListener extends ListenerAdapter<PircBotX> {
             if(tokens[3].equals("CLEAR")) {
                 IRCColorizer.cleanUserPattern(nick);
             }
+            else if(tokens[3].startsWith("THEME")) {
+            	IRCColorizer.changeTheme(tokens[3]);
+            }
         } else {
             LOGGER.warning("could not set color! wrong number of tokens\n");
         }

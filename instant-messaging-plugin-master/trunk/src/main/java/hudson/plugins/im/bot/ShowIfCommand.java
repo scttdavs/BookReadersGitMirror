@@ -37,8 +37,18 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
         /* add a governor to the query output if none are specified */
     	boolean flag = false;
     	for (int i = 0; i < list.size(); i++) {
-    		flag = flag || list.get(i).get(0) == "build"; 
+            ArrayList<String> queries = list.get(i);
+            for(int j = 0; j < queries.size(); j++) {
+                if(queries.get(j).trim().equals("build")) {
+                    flag = true;
+                    break;
+                }
+            }
+            if(flag) { 
+                break; 
+            }
     	}
+
     	if (!flag) {
     		ArrayList<String> temp = new ArrayList<String>();
     		temp.add("build");
@@ -64,8 +74,8 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
 
             // apply showif filters here
             if(!checkQuery(query, query_type)){
-                msg.append("Malformed Command! "+query_type+"\n");
-                System.out.println("Malformed Command: "+query_type+"\n");
+                msg.append("Malformed "+query_type+" Command!\n");
+                System.out.println("Malformed "+query_type+" Command!\n");
                 continue;
             }
             
@@ -193,9 +203,9 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
         
         // Parse Query
         for (int i = 0; i < arg_len; i++) {
-            if((!args[i].equals("showIf") || !args[i].equals("si")) && !args[i].equals("!jenkins") && !args[i].equals(spacer)){
+            if((!args[i].equals("showIf") && !args[i].equals("si")) && !args[i].equals("!jenkins") && !args[i].equals(spacer)){
                 ArrayList<String> temp = new ArrayList<String>();
-                for (; i < arg_len && !args[i].equals(spacer); i++) {
+                for (; i < arg_len && !args[i].equals(spacer) && !args[i].equals("showIf") && !args[i].equals("si"); ++i) {
                     temp.add(args[i]);
                 }
                 list.add(temp);

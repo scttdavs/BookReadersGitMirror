@@ -48,7 +48,7 @@ public class UserCommand extends AbstractSourceQueryCommand {
 		} else if (args.length > 4) {
 			return giveSyntax(sender.getNickname(), args[0], 2);
 		}
-		
+
 		String userName = args[1];
 
 		User user = User.get(userName, false, Collections.emptyMap());
@@ -95,6 +95,7 @@ public class UserCommand extends AbstractSourceQueryCommand {
 			// UserHistory jchen186 default 2
 			if (args[2].equals("default") || args[2].equals("Default")) {
 				changeDefaultNumber(Integer.parseInt(args[3]));
+				counter = getDefaultNumber();
 			}
 		} else if (args.length > 4) {
 			// error

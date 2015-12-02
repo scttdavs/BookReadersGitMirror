@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.model.AbstractProject;
+import hudson.plugins.im.IMException;
 import hudson.plugins.im.Sender;
 import jenkins.model.Jenkins;
 
@@ -51,44 +52,25 @@ public class OpenCommand extends AbstractTextSendingCommand {
 		private List<FilePath> destinations;
 		private boolean isFindFile;
 		private Map<FilePath,String> destPaths;
-		
-		private boolean isValid;
-		private String reason;
 
 		MsgWrapper(String projectName, String parentPath) {
 			this.projectName = projectName;
 			this.parentPath = parentPath;
 			destinations = new ArrayList<FilePath>();
-			this.isValid = true;
 			this.isFindFile = false;
 		}
 
 		MsgWrapper(String projectName,Map<FilePath,String> destPaths) {
 			this.projectName = projectName;
 			this.destPaths = destPaths;
-			this.isValid = true;
 			this.isFindFile = true;
 		}
 		
-		MsgWrapper(String reason) {
-			this.isValid = false;
-			this.reason = reason;
-			this.isFindFile = false;
-		}
-
 		boolean isFindFile() {
 			return isFindFile;
 		}
 		Map<FilePath,String> getDestPaths(){
 			return destPaths;
-		}
-		
-		boolean isValid() {
-			return isValid;
-		}
-
-		String getReason() {
-			return reason;
 		}
 
 		String getProjectName() {
@@ -130,7 +112,7 @@ public class OpenCommand extends AbstractTextSendingCommand {
 	 * @param args  The original message
 	 * @return 
 	 */
-	private MsgWrapper parseMessage(String[] args) {
+	private MsgWrapper parseMessage(String[] args) throws IMException {
 		// Find the proper project
 		AbstractProject<?, ?> proj = getJobProvider().getJobByNameOrDisplayName(args[1]);
 		if (proj != null) {
@@ -139,15 +121,15 @@ public class OpenCommand extends AbstractTextSendingCommand {
 			FilePath rootDir = getWorkSpace(proj);
 
 			// Workspace is not available
-			if (rootDir == null)
-				return new MsgWrapper("Cannot Get WorkSpace!");
+			if (rootDir == null) {
+				throw new IMException("Cannot Get WorkSpace!");
+			}
 
 			// Find Command
 			if ( args.length > 2 && args[2].indexOf("/") == -1 ) {
-				Map<FilePath,String> destPaths = new HashMap<>();
-				traverseFilePath( rootDir ,args[2],"",destPaths);
+				Map<FilePath,String> destPaths = traverseFilePath( rootDir ,args[2],"");
 				if ( destPaths.size() == 0 ) {
-					return new MsgWrapper("Directory/File Not Found!!");
+					throw new IMException("Directory/File Not Found!!");
 				} else {
 					MsgWrapper msg = new MsgWrapper(args[1],destPaths);
 					return msg;
@@ -160,7 +142,7 @@ public class OpenCommand extends AbstractTextSendingCommand {
 			String name = path[1];
 			List<FilePath> dests = new ArrayList<>();
 			try {
-				// Find the destination file
+				// Check all child files
 				if (name.equals("")) {
 					dests.add(parent);
 				} else if (parent.isDirectory()) {
@@ -171,15 +153,13 @@ public class OpenCommand extends AbstractTextSendingCommand {
 					}
 				}
 
-				// Find files
+				// Traverse all sub directories
 				if (dests.size() == 0) {
-					Map<FilePath,String> destPaths = new HashMap<>();
-					traverseFilePath(parent,name,"",destPaths);
+					Map<FilePath,String> destPaths = traverseFilePath(parent,name,"");
 					if ( destPaths.size() == 0 ) {
-						return new MsgWrapper("Directory/File Not Found!!");
+						throw new IMException("Directory/File Not Found!!");
 					} else {
-						MsgWrapper msg = new MsgWrapper(args[1],destPaths);
-						return msg;
+						return new MsgWrapper(args[1],destPaths);
 					}
 				} else {
 					MsgWrapper msg = new MsgWrapper(args[1], path[0]);
@@ -188,11 +168,11 @@ public class OpenCommand extends AbstractTextSendingCommand {
 				}
 
 			} catch (Exception e) {
-				return new MsgWrapper("Directory/File Not Found!!");
+				throw new IMException("Directory/File Not Found!!");
 			}
 
 		} else {
-			return new MsgWrapper("Unknown job '" + args[1] + "'");
+			throw new IMException("Unknown job '" + args[1] + "'");
 		}
 	}
 
@@ -203,10 +183,6 @@ public class OpenCommand extends AbstractTextSendingCommand {
 	 * @return
 	 */
 	private String handler(MsgWrapper msg) {
-		// Parent File Path Wrong
-		if (!msg.isValid()) {
-			return msg.getReason();
-		}
 		// Find File 
 		if ( msg.isFindFile() ) {
 			StringBuilder res = new StringBuilder();
@@ -217,13 +193,9 @@ public class OpenCommand extends AbstractTextSendingCommand {
 			}
 			return res.toString();
 		}
-		int destNum = msg.getDestNum();
 		try {
-			// No Destination
-			if (destNum < 1) {
-				return "Directory/File Not Found!!";
-			} else if (destNum > 1) { 
-				// Multiple files/directories available
+			// Multiple files/directories available
+			if ( msg.getDestNum() > 1) {
 				StringBuilder res = new StringBuilder("Available Directory/File Name:\n");
 				for (FilePath dest : msg.getDestinations()) {
 					res.append(file2Str(dest));
@@ -283,7 +255,12 @@ public class OpenCommand extends AbstractTextSendingCommand {
 
 		} else if (args.length < 4) {
 			// Show content of directory or URL of file
-			MsgWrapper msg = parseMessage(args);
+			MsgWrapper msg;
+			try {
+				msg = parseMessage(args);
+			} catch (IMException e) {
+				return e.getMessage();
+			}
 			return handler(msg);
 
 		} else {
@@ -328,6 +305,11 @@ public class OpenCommand extends AbstractTextSendingCommand {
 	 * Utility Methods
 	 * 
 	 */
+	private Map<FilePath,String> traverseFilePath(FilePath root, String name, String parentPath){
+		Map<FilePath,String> destPaths = new HashMap<>();
+		traverseFilePath(root,name,parentPath,destPaths);
+		return destPaths;
+	}
 	private void traverseFilePath( FilePath root, String name, String parentPath, Map<FilePath,String> destPaths ) {
 		try {
 			

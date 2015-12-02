@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.*;
 import java.io.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.pircbotx.Colors;
 
@@ -36,6 +37,8 @@ public class IRCColorizer {
     //userPattern store the String/Pattern->color preference for each specific user
     //e.g.userPattern[nickname][user_prefered_string_pattern]
     private static HashMap<String, HashMap<String, String> > userPattern; 
+    private static HashMap<String, HashMap<ResultTrend, String> > themes; 
+    private static String currentTheme;
         
     static {
         // unserialize userPattern
@@ -43,13 +46,64 @@ public class IRCColorizer {
         // load a default user pattern
     	LOGGER.info("----- Reads file -----");
     	readFile("userPattern.ser");
+    	createThemes();
+    	currentTheme = "THEME1";
+    }
+    
+    /**
+     * creating Themes
+     */
+    private static void createThemes() {
+    	themes = new HashMap<String, HashMap<ResultTrend,String>>();
+    	themes.put("THEME1", createDefault());
+    	for(int i = 2; i < 11; i++) {
+    		themes.put("THEME"+i, oneColorTheme());
+    	}
+    }
+    
+    private static HashMap<ResultTrend, String> createDefault() {
+    	HashMap<ResultTrend, String> theme = new HashMap<ResultTrend, String>();
+    	theme.put(ResultTrend.FIXED, Colors.BOLD + Colors.UNDERLINE + Colors.GREEN);
+    	theme.put(ResultTrend.SUCCESS, Colors.BOLD + Colors.GREEN);
+    	theme.put(ResultTrend.FAILURE, Colors.BOLD + Colors.UNDERLINE + Colors.RED);
+    	theme.put(ResultTrend.STILL_FAILING, Colors.BOLD + Colors.RED);
+    	theme.put(ResultTrend.UNSTABLE, Colors.BOLD + Colors.UNDERLINE + Colors.BROWN);
+    	theme.put(ResultTrend.STILL_UNSTABLE, Colors.BOLD + Colors.BROWN);
+    	theme.put(ResultTrend.NOW_UNSTABLE, Colors.BOLD + Colors.MAGENTA);
+    	theme.put(ResultTrend.ABORTED, Colors.BOLD + Colors.LIGHT_GRAY);
+    	
+    	return theme;
+    }
+    
+    private static String rando(int min, int max) {
+    	int rand = ThreadLocalRandom.current().nextInt(min, max + 1);
+    	return Character.toString((char)rand);
+    }
+    
+    private static HashMap<ResultTrend, String> oneColorTheme() {
+    	HashMap<ResultTrend, String> theme = new HashMap<ResultTrend, String>();
+    	theme.put(ResultTrend.FIXED, Colors.BOLD + Colors.UNDERLINE + rando(300,315));
+    	theme.put(ResultTrend.SUCCESS, Colors.BOLD + rando(300,315));
+    	theme.put(ResultTrend.FAILURE, Colors.BOLD + Colors.UNDERLINE + rando(300,315));
+    	theme.put(ResultTrend.STILL_FAILING, Colors.BOLD + Colors.UNDERLINE + rando(300,315));
+    	theme.put(ResultTrend.UNSTABLE, Colors.BOLD + Colors.UNDERLINE + rando(300,315));
+    	theme.put(ResultTrend.STILL_UNSTABLE, Colors.BOLD + rando(300,315));
+    	theme.put(ResultTrend.NOW_UNSTABLE, Colors.BOLD + rando(300,315));
+    	theme.put(ResultTrend.ABORTED, Colors.BOLD + rando(300,315));
+    	
+    	return theme;
     }
     
     //clean userPattern by nickname
     public static void cleanUserPattern(String nickname)
 	{
     	userPattern.remove(nickname);
+    	currentTheme = "THEME1";
 	}
+    
+    public static void changeTheme(String theme) {
+    	currentTheme = theme;
+    }
     
     // get userPattern size
     public static int getSize()
@@ -66,6 +120,7 @@ public class IRCColorizer {
     
     /**
      * Colorize the message line if certain keywords are found in it. 
+     * @param message message that needs to be changed
      */
     public static String colorize(String message){
         
@@ -177,17 +232,20 @@ public class IRCColorizer {
             int index = line.indexOf(keyword);
             if (index != -1) {
                 final String color;
-                switch (result) {
-                    case FIXED: color = Colors.BOLD + Colors.UNDERLINE + Colors.GREEN; break;
-                    case SUCCESS: color = Colors.BOLD + Colors.GREEN; break;
-                    case FAILURE: color = Colors.BOLD + Colors.UNDERLINE + Colors.RED; break;
-                    case STILL_FAILING: color = Colors.BOLD + Colors.RED; break;
-                    case UNSTABLE: color = Colors.BOLD + Colors.UNDERLINE + Colors.BROWN; break;
-                    case STILL_UNSTABLE: color = Colors.BOLD + Colors.BROWN; break;
-                    case NOW_UNSTABLE: color = Colors.BOLD + Colors.MAGENTA; break;
-                    case ABORTED: color = Colors.BOLD + Colors.LIGHT_GRAY; break;
-                    default: return line;
-                }
+                HashMap<ResultTrend, String> temp = themes.get(currentTheme);
+                color = temp.get(result);
+                
+//                switch (result) {
+//                    case FIXED: color = Colors.BOLD + Colors.UNDERLINE + Colors.GREEN; break;
+//                    case SUCCESS: color = Colors.BOLD + Colors.GREEN; break;
+//                    case FAILURE: color = Colors.BOLD + Colors.UNDERLINE + Colors.RED; break;
+//                    case STILL_FAILING: color = Colors.BOLD + Colors.RED; break;
+//                    case UNSTABLE: color = Colors.BOLD + Colors.UNDERLINE + Colors.BROWN; break;
+//                    case STILL_UNSTABLE: color = Colors.BOLD + Colors.BROWN; break;
+//                    case NOW_UNSTABLE: color = Colors.BOLD + Colors.MAGENTA; break;
+//                    case ABORTED: color = Colors.BOLD + Colors.LIGHT_GRAY; break;
+//                    default: return line;
+//                }
                 
                 return line.substring(0, index) + color + keyword + Colors.NORMAL
                         + line.substring(index + keyword.length(), line.length());
@@ -234,5 +292,7 @@ public class IRCColorizer {
     		ex.printStackTrace();
     	}
     }
+    
+    
 
 }
