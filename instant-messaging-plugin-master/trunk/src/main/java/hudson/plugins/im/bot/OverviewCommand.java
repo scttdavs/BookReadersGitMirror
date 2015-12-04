@@ -17,7 +17,7 @@ import hudson.scm.ChangeLogSet.Entry;
 
 /**
  * Displays the health for one or several jobs.
- *
+ * 
  * @author Anna, Scott, Zehao, Yuhang
  */
 @Extension
@@ -25,12 +25,21 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
 	
 	public final String OVERVIEW = "overview";
 	public final String LINE_BREAK = "\n";
+	
+	private static final String SYNTAX = " [o <job> | overview <job>]";
+	private static final String HELP = SYNTAX + " - show the overview of a specific job";
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Collection<String> getCommandNames() {
 		return Arrays.asList(OVERVIEW, "o");
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	protected CharSequence getMessageForJob(AbstractProject<?, ?> project) {
 		StringBuilder msg = new StringBuilder(32);
@@ -44,7 +53,6 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
             msg.append("(disabled)");
         } else if (project.isBuilding()) {
         	msg.append( String.format("(BUILDING: %s)",project.getLastBuild().getDurationString() ) );
-//        	msg.append(("(BUILDING: ").append(project.getLastBuild().getDurationString()).append(")");
         } else if (project.isInQueue()) {
             msg.append("(in queue)");
         }
@@ -87,12 +95,14 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
         return msg;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	protected String getCommandShortName() {
 		return OVERVIEW;
 	}
 
-	// Get the Indent Spaces
 	private String getSpaces(String projectName) {
 		int spacesNum = projectName.length();
         StringBuilder spaces = new StringBuilder("  ");
@@ -100,5 +110,13 @@ public class OverviewCommand extends AbstractMultipleJobCommand {
         	spaces.append(" ");
         }
         return spaces.toString();
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getHelp() {
+		return HELP;
 	}
 }

@@ -3,7 +3,7 @@ package hudson.plugins.im.bot;
 /**
  * Is thrown when a bot command couldn't be executed.
  *
- * @author kutzi
+ * @author 
  */
 public class CommandException extends Exception {
     

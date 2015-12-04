@@ -8,146 +8,132 @@ import hudson.Extension;
 import hudson.plugins.im.Sender;
 import jenkins.model.Jenkins;
 
+/**
+ * 
+ * 
+ * @author Zehao, Tao
+ *
+ */
 @Extension
 public class URLCommand extends AbstractTextSendingCommand {
 
 	private static final String SYNTAX = "<page>";
 	private static final String HELP = SYNTAX + " - retrieve the spesific URL for Jenkins";
 
-	HashMap<String, Integer> cmd_list;
+	/** Mapping the command arguments to path */
+	private HashMap<String, String> cmd_list;
+	/** All available command names*/
+	private String availableCommand;
 	
+	/**
+	 * 
+	 */
 	public URLCommand() {
-		createCommendList();
+		super();
+		createCommandList();
+		getAvailableCommand();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Collection<String> getCommandNames() {
 		return Collections.singleton("geturl");
 	}
 	
-	
-
+	/**
+	 * {@inheritDoc}
+	 * 
+	 */
 	@Override
 	protected String getReply(Bot bot, Sender sender, String[] args) {
-		if (cmd_list == null) {
-			createCommendList();          
-		}
-
+		// "geturl"
 		if (args.length == 1) {
 			return getBaseURL();
-		} else if (args.length == 2) {
-			int cmd_idx = cmd_list.get(args[1]) == null ? 0 : cmd_list.get(args[1]);
-			return executeCommand(cmd_idx);
-		} else {
+		} 
+		// "geturl name"
+		else if (args.length == 2) {
+			String path = cmd_list.get(args[1]);
+			return path!=null?(getBaseURL()+path):getAvailableCommand();
+		}
+		// Invalid Arguments
+		else {
 			return giveSyntax(sender.getNickname(), args[0]);
 		}
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String getHelp() {
 		return HELP;
 	}
-
+	
+	/**
+	 * 
+	 * @param sender Name or ID of Sender (Chat room) 
+	 * @param cmd Command Name "geturl <cmd>"
+	 * @return
+	 */
 	private String giveSyntax(String sender, String cmd) {
 		return sender + ": syntax is: '" + cmd + SYNTAX + "'";
 	}
 
+	/**
+	 * Get the server URL of Jenkins
+	 * 
+	 * @return  "http://domain:port/"
+	 */
 	String getBaseURL() {
 		return Jenkins.getInstance().getRootUrl();
 	}
 
-	private String getGlobalConfigureURL() {
-		return getBaseURL() + "configure/";
-	}
-
-	private String getGlobalSystemLogURL() {
-		return getBaseURL() + "log/";
-	}
-
-	private String getPluginManager() {
-		return getBaseURL() + "pluginManager/";
-	}
-    
-    
-    
-    //extend
-    private String getSecurity() {
-        return getBaseURL() + "configureSecurity/";
-    }
-    
-    private String getLoadstatistics() {
-        return getBaseURL() + "load-statistics/";
-    }
-    
-    private String getScriptConsole() {
-        return getBaseURL() + "script/";
-    }
-    
-    private String getNodes() {
-        return getBaseURL() + "computer/";
-    }
-    
-    private String getUsers() {
-        return getBaseURL() + "securityRealm/";
-    }
-    
-    //
+	/**
+	 * 
+	 * @return The string sent back to Chat Room
+	 */
 	private String getAvailableCommand() {
-		StringBuilder buf = new StringBuilder();
-		buf.append("Available Command: ");
-		for (String key : cmd_list.keySet()) {
-			buf.append(key);
-			buf.append(", ");
+		if ( availableCommand == null ) {
+			StringBuilder buf = new StringBuilder();
+			buf.append("Available Command: ");
+			for (String key : cmd_list.keySet()) {
+				buf.append(key);
+				buf.append(", ");
+			}
+			availableCommand = buf.substring(0, buf.length() - 2);
 		}
-		return buf.substring(0, buf.length() - 2);
+		return availableCommand;
 	}
 	
-	private void insertData(int seq, String name1, String name2) {
-		if(name1.length() > 0) {
-			cmd_list.put(name1, seq);
-		}
-		if(name2.length() > 0) {
-			cmd_list.put(name2, seq);
-		}
-	}
-	
-	private String executeCommand(int cmd_idx) {
-		switch (cmd_idx) {
-		case 1:
-			return getBaseURL();
-		case 2:
-			return getGlobalConfigureURL();
-		case 3:
-			return getGlobalSystemLogURL();
-		case 4:
-			return getPluginManager();
-        case 5:
-            return getSecurity();
-        case 6:
-            return getLoadstatistics();
-        case 7:
-            return getScriptConsole();
-        case 8:
-            return getNodes();
-        case 9:
-            return getUsers();
-		default:
-			return getAvailableCommand();
-		}
-	}
-	
-	private void createCommendList() {
-		cmd_list = new HashMap<String, Integer>();
+	/**
+	 * Create a hash table which maps the command arguments to URL path.
+	 */
+	private void createCommandList() {
+		cmd_list = new HashMap<String, String>();
 		
-		insertData(1, "base", "root");
-		insertData(2, "configure", "conf");
-		insertData(3, "log", "");
-		insertData(4, "plugin", "plugins");
-		insertData(5, "security", "sec");
-		insertData(6, "statistic", "stat");
-		insertData(7, "script", "scripts");
-		insertData(8, "nodes", "node");
-		insertData(9, "user", "users");   
+		createHashMapEntries("","base","root");
+		createHashMapEntries("configure/", "configure", "conf");
+		createHashMapEntries("log/", "log");
+		createHashMapEntries("pluginManager/", "plugin", "plugins");
+		createHashMapEntries("configureSecurity/", "security", "sec");
+		createHashMapEntries("load-statistics/", "statistic", "stat");
+		createHashMapEntries("script/", "script", "scripts");
+		createHashMapEntries("computer/", "nodes", "node");
+		createHashMapEntries("securityRealm/", "user", "users");   
+	}
+	
+	/**
+	 * Helper method for createCommandList() to put <key,value> pairs into hash map.
+	 * 
+	 * @param value URL path
+	 * @param keys All keys that points to the same path 
+	 */
+	private void createHashMapEntries(String value, String... keys){
+		for ( String key : keys ) {
+			cmd_list.put(key, value);
+		}
 	}
 }
 

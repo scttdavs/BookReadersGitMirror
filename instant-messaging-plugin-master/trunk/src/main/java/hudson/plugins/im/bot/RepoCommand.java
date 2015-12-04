@@ -16,19 +16,32 @@ import hudson.scm.SCM;
 import hudson.scm.ChangeLogSet.Entry;
 import jenkins.model.Jenkins;
 
+/**
+ * 
+ * @author 
+ *
+ */
 @Extension
 public class RepoCommand extends AbstractSourceQueryCommand {
 
 	private static final String SYNTAX = " [show <int> | reponumber <int> | all]";
 	private static final String HELP = SYNTAX + " - show the repository details of build history";
 	public final String REPO = "repo";
-	HashMap<String, Integer> cmd_list;
-
+	
+	/** All available command names*/
+	private String availableCommand;
+	
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public Collection<String> getCommandNames() {
 		return Collections.singleton("repo");
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {
 		
@@ -36,42 +49,20 @@ public class RepoCommand extends AbstractSourceQueryCommand {
 		int counter = 5;
 	    int flag = 1;
 	    boolean lock = false;
-	    
-		isNull(); //Initialize
 
-		if (args.length == 1) {
-			counter = 5;
-			flag = 1;
-			lock = false;
-			number = 0;
-		} else if (args.length >= 2) {
-			int cmd_idx = cmd_list.get(args[1]) == null ? 0 : cmd_list.get(args[1]);
-			switch (cmd_idx) {
-			case 1:
-				if (args.length == 2){
-					counter=5;
-					flag=1;
-					lock=false;
-					number = 0;
-				}
-				else{
+		if (args.length >= 2) {
+			switch ( args[1] ) {
+			case "show":
+				if (args.length > 2)
 					counter = Integer.parseInt(args[2]);
-					flag=1;
-					lock=false;
-					number=0;
-				}
 				break;
-			case 2:
+			case "reponumber":
 				number = Integer.parseInt(args[2]);
 				flag=0;
 				lock=true;
-				counter=5;
 				break;
-			case 3:
-				counter=5;
+			case "all":
 				flag=0;
-				lock=false;
-				number=0;
 				break;
 			default:
 				return getAvailableCommand();
@@ -100,17 +91,16 @@ public class RepoCommand extends AbstractSourceQueryCommand {
             }
         	counter--;
         	if(lock==false){
-        		msg.append("Building #: ").append(abBuild.getNumber()); 
+        		msg.append( String.format("Building #: %s", abBuild.getNumber()) );
         	}
              
             for (Entry entry : abBuild.getChangeSet()) {
             	if((Integer.parseInt(entry.getCommitId()) == number) || (lock==false)) {
             		if(lock){
-            			msg.append("Building #: ").append(abBuild.getNumber()); 
+            			msg.append( String.format("Building #: %s", abBuild.getNumber()) ); 
             		}
-            		msg.append("\nRevision: "+entry.getCommitId()); 
-            		msg.append(entry.getAffectedPaths());           	
-            		msg.append("\n* " + entry.getAuthor()).append(": ").append(entry.getMsg());
+            		msg.append( String.format("\nRevision: %s%s\n* %s: %s",
+            				entry.getCommitId(), entry.getAffectedPaths(), entry.getAuthor(), entry.getMsg() ) );
             		if(lock) {
             			break;
             		}
@@ -125,34 +115,35 @@ public class RepoCommand extends AbstractSourceQueryCommand {
         return msg;
 	}
 
-	private void isNull() {
-		if (cmd_list == null) {
-			cmd_list = new HashMap<String, Integer>();
-
-			cmd_list.put("show", 1);
-
-			cmd_list.put("reponumber", 2);
-
-			cmd_list.put("all", 3);
-		}
-	}
-
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	protected String getCommandShortName() {
 		return REPO;
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public String getHelp() {
 		return HELP;
 	}
 	
+	/**
+	 * 
+	 * @return The string sent back to Chat Room
+	 */
 	private String getAvailableCommand() {
-		StringBuilder buf = new StringBuilder();
-		buf.append("Available Command: ");
-		buf.append("show [how many last builds wanted], ");
-		buf.append("reponumber [the repository number for search], ");
-		buf.append("all(be careful to choose, it will take a long time to run) ");
-		return buf.substring(0, buf.length() - 1);
+		if ( availableCommand == null ) {
+			StringBuilder buf = new StringBuilder();
+			buf.append("Available Command: ");
+			buf.append("show [how many last builds wanted], ");
+			buf.append("reponumber [the repository number for search], ");
+			buf.append("all(be careful to choose, it will take a long time to run) ");
+			availableCommand =  buf.substring(0, buf.length() - 1);
+		}
+		return availableCommand;
 	}
 }

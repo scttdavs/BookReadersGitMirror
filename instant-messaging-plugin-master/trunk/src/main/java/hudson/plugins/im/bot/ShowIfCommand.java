@@ -3,83 +3,93 @@
  */
 package hudson.plugins.im.bot;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.logging.Logger;
+
 import hudson.Extension;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.plugins.im.tools.MessageHelper;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.*;
-import java.util.Date;
-import java.util.logging.Logger;
-import java.text.SimpleDateFormat;
-import hudson.plugins.im.tools.ExceptionHelper;
-import java.text.DateFormat;
-import java.text.ParseException;
-
-import java.lang.Integer;
 /**
- * @author BookReaders CS 427 Group UIUC
+ * 
+ * ShowIfCommand collects all the builds in Jenkins and apply a set of filters to remove unnecessary builds.
+ * A string representation of the remaining builds was returned and send back to Chat Room
+ * 
+ * Sample Input : 
+ * !jenkins showIf " user <user> | date < < | = | > > <YYYY-MM-DD-HH-mm> | project <project> | build <build number> | jobs < < | = | > > <job number>
+ * 
+ * @author Austin, Ryan
+ * @authot Zehao ( Add HashMap mapping query_type to filter objects to avoid large number of conditions )
+ * 
  */
-
-
 @Extension
 public class ShowIfCommand extends AbstractSourceQueryCommand {
     private static final Logger LOGGER  = Logger.getLogger(ShowIfCommand.class.getName());
+    
+    /** Map query_type name to the corresponding filter instance */
+    private static Map<String,AbstractBuildsFilter> filters = getFilters(); 
+    
+    /** The static method to generate the filters map */
+    private static Map<String,AbstractBuildsFilter> getFilters(){
+    	Map<String,AbstractBuildsFilter> map = new HashMap<>();
+    	map.put("user", new UserFilter());
+    	map.put("date", new DateFilter());
+    	map.put("project", new ProjectFilter());
+    	map.put("build", new BuildFilter());
+    	map.put("jobs",new JobsFilter());
+    	return map;
+    }
+    
     @Override
     public Collection<String> getCommandNames() {
-        System.out.println("[CHECK] getCommandNames() was reached in showIf\n");
         return Arrays.asList("showIf","si");
     }
 
-    protected ArrayList<ArrayList<String>> queryGovernor(ArrayList<ArrayList<String>> list) {
-        /* add a governor to the query output if none are specified */
-    	boolean flag = false;
-    	for (int i = 0; i < list.size(); i++) {
-            ArrayList<String> queries = list.get(i);
-            for(int j = 0; j < queries.size(); j++) {
-                if(queries.get(j).trim().equals("build")) {
-                    flag = true;
-                    break;
-                }
-            }
-            if(flag) { 
-                break; 
-            }
-    	}
-
-    	if (!flag) {
-    		ArrayList<String> temp = new ArrayList<String>();
+    /**
+     * Apply All Filters to builds collections & Generate the reply string
+     * 
+     * @param list List containing all parsed input arguments
+     * @param args Original input arguments
+     * @param builds A collection of all builds in Jenkins
+     * @return The string which is ready to sent back to Chat room
+     */
+    private CharSequence distroToFilter(ArrayList<ArrayList<String>> list, String[] args, Collection<AbstractBuild<?,?>> builds) {
+        
+        StringBuilder msg = new StringBuilder();
+        
+        /* Add the default build limit */
+        boolean isGoverned = false;
+        if ( !Arrays.asList(args).contains("build") ) {
+        	isGoverned = true;
+        	ArrayList<String> temp = new ArrayList<>();
     		temp.add("build");
     		temp.add("10");
     		list.add(temp);
-    	}
+        }
 
-        return list;
-    }
-
-    private CharSequence distroToFilter(ArrayList<ArrayList<String>> list, String[] args, Collection<AbstractBuild<?,?>> builds) {
-        
-        StringBuilder msg = new StringBuilder(builds.size());
-        
-        /* govern the query */
-        int init_query_size = list.size();
-        this.queryGovernor(list);
-        int governed_query_size = list.size();
-
-        for (int i = 0; i < list.size(); i++) {
-            ArrayList<String> query = list.get(i);
+        /* Apply Filters To Builds Collections */
+        for ( ArrayList<String> query : list ) {
             String query_type = query.get(0);
 
             // apply showif filters here
             if(!checkQuery(query, query_type)){
                 msg.append("Malformed "+query_type+" Command!\n");
-                System.out.println("Malformed "+query_type+" Command!\n");
+                LOGGER.warning("Malformed "+query_type+" Command!\n");
                 continue;
             }
             
-            builds = this.runQuery(query, query_type , builds);
+            AbstractBuildsFilter filter = filters.get(query_type);
+            if ( filter != null ) {
+            	filter.applyFilter(builds, query);
+            }
+//            builds = this.runQuery(query, query_type , builds);
 
             if (builds.isEmpty()) {
                 StringBuilder temp = new StringBuilder(32);
@@ -87,14 +97,14 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
                 return temp;
             }
         }
+        
+        /* Generate the output string */
         for (AbstractBuild<?, ?> abBuild: builds) {
-            msg.append("last build: ").append(abBuild.getNumber()).append(" (")
-                .append(abBuild.getTimestampString()).append(" ago): ").append(abBuild.getResult())
-                //.append(": ").append(MessageHelper.getBuildURL(abBuild))
-                .append(System.getProperty("line.separator"));
+        	msg.append( String.format("last build: %s (%s ago): %s\n",
+        			abBuild.getNumber(), abBuild.getTimestampString(), abBuild.getResult() ) );
         }
 
-        if(init_query_size != governed_query_size) {
+        if( isGoverned ) {
             msg.append("\nOUTPUT IS GOVERNED TO 10 ITEMS!\n");
         }
 
@@ -102,98 +112,30 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
         return msg;
     }
 
-    protected boolean malformed_test(ArrayList<String> query_terms, int size) {
-        if (query_terms.size() <= size) { 
-            return true; 
-        } else { 
-            return false; 
-        }
-    }
-
+    /**
+     * Check whether the input arguments are valid
+     * @param query
+     * @param query_type
+     * @return
+     */
     protected boolean checkQuery(ArrayList<String> query, String query_type) {
-        // each .get(i) call on the query is accessing a query argument
-        switch (query_type) {
-            case "user":
-                if (malformed_test(query, 1)) {
-                    return false;
-                } 
-                break;
-            case "date":
-                if (malformed_test(query, 2)) {
-                    return false;
-                } 
-                break;
-            case "project":
-                if (malformed_test(query, 1)) {
-                    return false;
-                }
-                break;
-            case "build":
-                if (malformed_test(query, 1)) {
-                    return false;
-                }
-                break;
-            case "jobs":
-                if (malformed_test(query, 2)) {
-                    return false;
-                }
-                break;
-            default: // add evil message
-                return false;
-        }
-
-        return true;
+    	if ( "user project build".indexOf(query_type) != -1 ) {
+    		return query.size() == 2;
+    	}
+    	if ( "date jobs".indexOf(query_type) != -1 ) {
+    		return query.size() == 3;
+    	}
+    	return false;
     }
 
-    protected Collection<AbstractBuild<?,?>> runQuery(ArrayList<String> query, String query_type, Collection<AbstractBuild<?,?>> builds) {
-
-        // each .get(i) call on the query is accessing a query argument
-        switch (query_type) {
-            case "user":
-                if (malformed_test(query, 1)) {
-                    return builds;
-                } 
-                builds = userFilter(builds,query.get(1));
-                break;
-            case "date":
-                if (malformed_test(query, 2)) {
-                    return builds;
-                } 
-                    builds = dateFilter(builds,query.get(2),query.get(1));
-                break;
-            case "project":
-                if (malformed_test(query, 1)) {
-                    return builds;
-                }
-                builds = projectFilter(builds,query.get(1));
-                break;
-            case "build":
-                if (malformed_test(query, 1)) {
-                    return builds;
-                }
-                builds = buildFilter(builds,query.get(1));
-                break;
-            case "jobs":
-                if (malformed_test(query, 2)) {
-                    return builds;
-                }
-                builds = jobsFilter(builds,query.get(2),query.get(1));
-                break;
-            default: // add evil message
-                    return builds;
-        }
-
-        return builds;
-    }
-
-
+    /**
+     * {@inheritDoc}
+     * 
+     * Parse the arguments & collect all builds
+     * Call distroToFilter() method to apply filters and generate reply string
+     */
     @Override
     protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {
-        // add a logger for args
-        String log_msg = args.toString();
-        LOGGER.warning(log_msg);
-
-        String spacer = "|";
         int arg_len = args.length;
         
         LOGGER.warning("there are " + Integer.toString(arg_len) + " args items\n");
@@ -203,10 +145,10 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
         
         // Parse Query
         for (int i = 0; i < arg_len; i++) {
-            if((!args[i].equals("showIf") && !args[i].equals("si")) && !args[i].equals("!jenkins") && !args[i].equals(spacer)){
+            if( "showIf si !jenkins |".indexOf( args[i] ) == -1 ){
                 ArrayList<String> temp = new ArrayList<String>();
-                for (; i < arg_len && !args[i].equals(spacer) && !args[i].equals("showIf") && !args[i].equals("si"); ++i) {
-                    temp.add(args[i]);
+                for (; i < arg_len && "showIf si |".indexOf( args[i] ) == -1; ++i) {
+                    temp.add(args[i].trim());
                 }
                 list.add(temp);
             }
@@ -232,23 +174,42 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
     protected String getCommandShortName() {
         return "detailed history";
     }
+}
 
-    // sub query priavate funcitons
-    private Collection<AbstractBuild<?, ?>> userFilter(Collection<AbstractBuild<?, ?>> builds, String username) {
-        return new GetUserHistory(builds, username);
-    }
-    
-    private Collection<AbstractBuild<?, ?>> dateFilter(Collection<AbstractBuild<?,?>> builds, String dt, String op) {
-         // *.getTime() might be a thing
-        Iterator<AbstractBuild<?,?>> it = builds.iterator();
-        DateFormat format = new SimpleDateFormat("YYYY-MM-dd-HH-mm");
+/**
+ * 
+ * Date Filter
+ * Remove all builds that don't match the date
+ * 
+ * args : date < < | = | > > <YYYY-MM-DD-HH-mm> eg. date < 2000-12-31-01-00
+ * Containing operator "<" and date in format of <YYYY-MM-DD-HH-mm>
+ * 
+ * @author Austin, Ryan, Zehao
+ *
+ */
+class DateFilter extends AbstractBuildsFilter {
+	@Override
+	public void applyFilter(Collection<AbstractBuild<?, ?>> builds, ArrayList<String> args) {
+		if ( args.size() != 3 ) return;
+		String op = args.get(1);
+		
+		// Check whether or not the operator is valid
+    	if ( "<>=".indexOf(op) == -1 ) {
+    		return;
+    	}
+    	
+    	// Get the date time
+    	DateFormat format = new SimpleDateFormat("YYYY-MM-dd-HH-mm");
         long date = 0;
         try{
-            date = (format.parse(dt)).getTime();
+            date = (format.parse( args.get(2) )).getTime();
         }
         catch(ParseException e) {
-            LOGGER.warning(ExceptionHelper.dump(e));
+            return;
         }
+        
+        // Filter
+        Iterator<AbstractBuild<?,?>> it = builds.iterator();
         while(it.hasNext()) {
             AbstractBuild<?,?> item = it.next();
             long temp = (item.getTimestamp()).getTimeInMillis();
@@ -269,16 +230,34 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
                     }
                     break;
                 default:
-                    LOGGER.warning("WARNING: Bad operator passed into date filter for ShowIfCommand");
-                    break;
             }
         }
-        return builds;
-    }
-    
-    private Collection<AbstractBuild<?, ?>> jobsFilter(Collection<AbstractBuild<?,?>> builds, String job, String op) {
+	}
+}
+
+/**
+ * Jobs Filter
+ * Remove all builds that don't match the specific build numbers
+ * 
+ * args : jobs < < | = | > > <job number> 
+ * For example: "jobs < 13" will remove all builds with a build number not less than 13 
+ * 
+ * @author Austin, Ryan, Zehao
+ *
+ */
+class JobsFilter extends AbstractBuildsFilter {
+	@Override
+	public void applyFilter(Collection<AbstractBuild<?, ?>> builds, ArrayList<String> args) {
+		if ( args.size() != 3 ) return;
+		String op = args.get(1);
+		int job_num = Math.abs( Integer.parseInt( args.get(2) ) );
+		
+		// Check whether or not the operator is valid
+    	if ( "<>=".indexOf(op) == -1 ) {
+    		return;
+    	}
+    	// Filter
         Iterator<AbstractBuild<?,?>> it = builds.iterator();
-        int job_num = Integer.parseInt(job);
         while(it.hasNext()) {
             AbstractBuild<?,?> item = it.next();
             int temp = item.getNumber();
@@ -299,40 +278,80 @@ public class ShowIfCommand extends AbstractSourceQueryCommand {
                     }
                     break;
                 default:
-                    LOGGER.warning("WARNING: Bad operator passed into job filter for ShowIfCommand");
-                    break;
             }
         }
-        return builds;
-    }
+	}
+}
 
-    private Collection<AbstractBuild<?, ?>> projectFilter(Collection<AbstractBuild<?,?>> builds, String projectName) {
-        Iterator<AbstractBuild<?,?>> it = builds.iterator(); // get an interator from the collection
+/**
+ * Project Filter
+ * Remove all builds that doesn't belong the specific project
+ * 
+ * args : project < project >
+ * 
+ * @author Austin, Ryan, Zehao
+ *
+ */
+class ProjectFilter extends AbstractBuildsFilter {
+	@Override
+	public void applyFilter(Collection<AbstractBuild<?, ?>> builds, ArrayList<String> args) {
+		if ( args.size() != 2 ) return;
+		String projectName = args.get(1);
+		
+		Iterator<AbstractBuild<?,?>> it = builds.iterator(); // get an interator from the collection
         while(it.hasNext()) {
             AbstractBuild<?,?> item = it.next();
             if (!(item.getProject().getName().equals(projectName))) {
                 it.remove();
             }
         }
-        return builds;
-    }
-    
-    private Collection<AbstractBuild<?, ?>> buildFilter(Collection<AbstractBuild<?,?>> builds, String n) {
-        // parse the number to determine how many builds to return
-        int number_of_recent_builds = (Integer.parseInt(n) < 0) ? -Integer.parseInt(n) : Integer.parseInt(n); // make sure the number is non-negative
+	}
+}
+
+/**
+ * Build Filter
+ * Determines the maximum number of builds in the collection  
+ * 
+ * args : build < build number >
+ * 
+ * @author Austin, Ryan, Zehao
+ *
+ */
+class BuildFilter extends AbstractBuildsFilter {
+	@Override
+	public void applyFilter(Collection<AbstractBuild<?, ?>> builds, ArrayList<String> args) {
+		if ( args.size() != 2 ) return;
+		// parse the number to determine how many builds to return
+        int number_of_recent_builds = Math.abs( Integer.parseInt( args.get(1) ) );
         Iterator<AbstractBuild<?,?>> it = builds.iterator(); // get an interator from the collection
         while(it.hasNext()) {
             AbstractBuild<?,?> item = it.next();
             if (number_of_recent_builds <= 0) {  // get the first n builds
-                try {
-                    it.remove();  // remove all the rest
-                } catch (IllegalStateException e) {
-                    LOGGER.warning(ExceptionHelper.dump(e));
-                };
+            	it.remove();  // remove all the rest
             };
             number_of_recent_builds--; // decrementer of builds
         }
-        // return truncated builds
-        return builds;
-    }
+	}
+	
+}
+
+/**
+ * User Filter
+ * Remove all builds that doesn't belong to specific user.
+ * 
+ * args : user < user name >
+ * 
+ * This class encapsulate the GetUserHistory class. ( Adapter )
+ * 
+ * @author Zehao
+ *
+ */
+class UserFilter extends AbstractBuildsFilter {
+	@Override
+	public void applyFilter(Collection<AbstractBuild<?, ?>> builds, ArrayList<String> args) {
+		if ( args.size() != 2 ) return;
+		Collection<AbstractBuild<?, ?>> newbuilds = new GetUserHistory(builds,args.get(1));
+		builds.retainAll( newbuilds );
+	}
+	
 }

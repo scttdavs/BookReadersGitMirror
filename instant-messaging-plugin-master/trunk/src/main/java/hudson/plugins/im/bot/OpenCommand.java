@@ -22,82 +22,16 @@ import jenkins.model.Jenkins;
 
 /**
  * Open the file or directory in specific project workspace.
+ * This command is a combination of "ls" and "find". 
+ * Users could traverse the workspace level by level or just use the file name to find the path. 
  * 
- * @author Zehao Song, Yuhang Wang
+ * @author Zehao, Yuhang, Scott
  *
  */
 
 @Extension
 public class OpenCommand extends AbstractTextSendingCommand {
-	/**
-	 * A inner nested helper class for OpenCommand.
-	 * The class is simply used for transfer data:
-	 * 		Project Name
-	 * 		Parent Path
-	 * 		All Valid FilePath objects
-	 * 		
-	 * 		The reason why parse failed.
-	 * 
-	 * 
-	 * 
-	 * The parseMessage() method is used to convert the original message into a MsgWrapper instance.
-	 * The handler() method will use MsgWrapper to generate the final reply string.
-	 * 
-	 * @author Zehao
-	 *
-	 */
-	private class MsgWrapper {
-		private String projectName;
-		private String parentPath;
-		private List<FilePath> destinations;
-		private boolean isFindFile;
-		private Map<FilePath,String> destPaths;
-
-		MsgWrapper(String projectName, String parentPath) {
-			this.projectName = projectName;
-			this.parentPath = parentPath;
-			destinations = new ArrayList<FilePath>();
-			this.isFindFile = false;
-		}
-
-		MsgWrapper(String projectName,Map<FilePath,String> destPaths) {
-			this.projectName = projectName;
-			this.destPaths = destPaths;
-			this.isFindFile = true;
-		}
-		
-		boolean isFindFile() {
-			return isFindFile;
-		}
-		Map<FilePath,String> getDestPaths(){
-			return destPaths;
-		}
-
-		String getProjectName() {
-			return projectName;
-		}
-
-		String getParentPath() {
-			return parentPath;
-		}
-
-		List<FilePath> getDestinations() {
-			return destinations;
-		}
-
-		void addDestination(FilePath destination) {
-			destinations.add(destination);
-		}
-
-		void addDestination(List<FilePath> dests) {
-			destinations.addAll(dests);
-		}
-
-		int getDestNum() {
-			return destinations.size();
-		}
-	}
-
+	
 	private static final String SYNTAX = "<ProjectName> <Path to Directory or File>";
 	private static final String HELP = SYNTAX + " - show the content of directory or the url of file";
 
@@ -107,143 +41,18 @@ public class OpenCommand extends AbstractTextSendingCommand {
 	}
 
 	/**
-	 * Parse the original message into a MsgWrapper object. 
+	 * {@inheritDoc}
 	 * 
-	 * @param args  The original message
-	 * @return 
 	 */
-	private MsgWrapper parseMessage(String[] args) throws IMException {
-		// Find the proper project
-		AbstractProject<?, ?> proj = getJobProvider().getJobByNameOrDisplayName(args[1]);
-		if (proj != null) {
-
-			// Find the proper workspace
-			FilePath rootDir = getWorkSpace(proj);
-
-			// Workspace is not available
-			if (rootDir == null) {
-				throw new IMException("Cannot Get WorkSpace!");
-			}
-
-			// Find Command
-			if ( args.length > 2 && args[2].indexOf("/") == -1 ) {
-				Map<FilePath,String> destPaths = traverseFilePath( rootDir ,args[2],"");
-				if ( destPaths.size() == 0 ) {
-					throw new IMException("Directory/File Not Found!!");
-				} else {
-					MsgWrapper msg = new MsgWrapper(args[1],destPaths);
-					return msg;
-				}
-			}
-			
-			// LS Command
-			String[] path = grabPath((args.length < 3) ? "" : args[2]);
-			FilePath parent = new FilePath(rootDir, path[0]);
-			String name = path[1];
-			List<FilePath> dests = new ArrayList<>();
-			try {
-				// Check all child files
-				if (name.equals("")) {
-					dests.add(parent);
-				} else if (parent.isDirectory()) {
-					for (FilePath temp : parent.list()) {
-						if (temp.getName().startsWith(name)) {
-							dests.add(temp);
-						}
-					}
-				}
-
-				// Traverse all sub directories
-				if (dests.size() == 0) {
-					Map<FilePath,String> destPaths = traverseFilePath(parent,name,"");
-					if ( destPaths.size() == 0 ) {
-						throw new IMException("Directory/File Not Found!!");
-					} else {
-						return new MsgWrapper(args[1],destPaths);
-					}
-				} else {
-					MsgWrapper msg = new MsgWrapper(args[1], path[0]);
-					msg.addDestination(dests);
-					return msg;
-				}
-
-			} catch (Exception e) {
-				throw new IMException("Directory/File Not Found!!");
-			}
-
-		} else {
-			throw new IMException("Unknown job '" + args[1] + "'");
-		}
-	}
-
-	/**
-	 * Generate the reply string based on the message.
-	 * 
-	 * @param msg
-	 * @return
-	 */
-	private String handler(MsgWrapper msg) {
-		// Find File 
-		if ( msg.isFindFile() ) {
-			StringBuilder res = new StringBuilder();
-			res.append("Files Found:\n");
-			Map<FilePath,String> destPaths = msg.getDestPaths();
-			for ( Entry<FilePath, String> entry : destPaths.entrySet() ) {
-				res.append( getBaseURL() + "job/" + msg.getProjectName() + "/ws" + entry.getValue() +"\n");
-			}
-			return res.toString();
-		}
-		try {
-			// Multiple files/directories available
-			if ( msg.getDestNum() > 1) {
-				StringBuilder res = new StringBuilder("Available Directory/File Name:\n");
-				for (FilePath dest : msg.getDestinations()) {
-					res.append(file2Str(dest));
-				}
-				return res.toString();
-			} else { // Only One File/Directory
-				FilePath destination = msg.getDestinations().get(0);
-				StringBuilder res = new StringBuilder();
-				if (destination.isDirectory()) {
-					// List the directory and file of workspace
-					List<FilePath> subDirs = destination.list();
-					List<String> dirsName = new ArrayList<>();
-					for (FilePath file : subDirs) {
-						dirsName.add(file2Str(file));
-					}
-					Collections.sort(dirsName);
-					for ( String name : dirsName ) {
-						res.append(name);
-					}
-					return res.toString();
-				} else {
-					// Grab and return the file content or URL
-					if (destination.length() < 500) { // return file content
-						BufferedReader in = new BufferedReader(new InputStreamReader(destination.read()));
-						String line = null;
-
-						while ((line = in.readLine()) != null) {
-							res.append(line + "\n");
-						}
-						return res.toString();
-					} else { // return the URL to the file
-						String temp = "job/" + msg.getProjectName() + "/ws/" + msg.getParentPath() + "/"
-								+ destination.getName();
-						temp = temp.replaceAll("//", "/");
-						return getBaseURL() + temp;
-					}
-				}
-			}
-		} catch (Exception e) {
-			return "Cannot Open Directory/File !!";
-		}
-
-	}
-
 	@Override
 	protected String getReply(Bot bot, Sender sender, String[] args) {
+		/* 
+		 * "open"
+		 * 
+		 * Prompt all available Project Name
+		 *  
+		 */
 		if (args.length == 1) {
-			// Prompt all available Project Name
 			StringBuilder res = new StringBuilder();
 			res.append("Syntax: open <Project Name> <Path To Dir/File>\n");
 			res.append("Available Project Name:\n");
@@ -253,8 +62,14 @@ public class OpenCommand extends AbstractTextSendingCommand {
 			}
 			return res.toString();
 
-		} else if (args.length < 4) {
-			// Show content of directory or URL of file
+		} 
+		/*
+		 * "open <Project Name> <Path to Destination>
+		 * 
+		 * Parse the message and generate the output
+		 * 
+		 */
+		else if (args.length < 4) {
 			MsgWrapper msg;
 			try {
 				msg = parseMessage(args);
@@ -276,6 +91,148 @@ public class OpenCommand extends AbstractTextSendingCommand {
 
 	private String giveSyntax(String sender, String cmd) {
 		return sender + ": syntax is: '" + cmd + SYNTAX + "'";
+	}
+	
+	/**
+	 * Parse the original message into a MsgWrapper object. 
+	 * 
+	 * @param args  The original message
+	 * @return 
+	 */
+	private MsgWrapper parseMessage(String[] args) throws IMException {
+		// Find the proper project
+		AbstractProject<?, ?> proj = getJobProvider().getJobByNameOrDisplayName(args[1]);
+		if ( proj == null ) throw new IMException("Unknown job '" + args[1] + "'");
+		
+		// Find the proper workspace
+		FilePath rootDir = getWorkSpace(proj);
+		if (rootDir == null) throw new IMException("Cannot Get WorkSpace!");
+
+		// Find Command
+		if ( args.length > 2 && args[2].indexOf("/") == -1 ) {
+			Map<FilePath,String> destPaths = traverseFilePath( rootDir ,args[2],"");
+			if ( destPaths.size() == 0 ) {
+				throw new IMException("Directory/File Not Found!!");
+			} else {
+				return new MsgWrapper(args[1],destPaths, true);
+			}
+		}
+		
+		// LS Command
+		String[] path = grabPath((args.length < 3) ? "" : args[2]);
+		FilePath parent = new FilePath(rootDir, path[0]);
+		String name = path[1];
+		Map<FilePath,String> destPaths = new HashMap<>();
+		try {
+			// First check all child FilePath
+			if (name.equals("")) {
+				destPaths.put(parent, path[0] );
+			} else if (parent.isDirectory()) {
+				for (FilePath temp : parent.list()) {
+					if (temp.getName().startsWith(name)) {
+						destPaths.put(temp, path[0]+"/"+temp.getName() );
+					}
+				}
+			}
+			if ( destPaths.size() > 0 ) {
+				MsgWrapper msg = new MsgWrapper(args[1], destPaths, false);
+				return msg;
+			}
+			
+			// Second Traverse all sub directories if no FilePath is found in the previous process
+			destPaths = traverseFilePath(parent,name,"/"+path[0].replaceAll( "/"+parent.getName()+"$","" ));
+			if ( destPaths.size() == 0 ) {
+				throw new IMException("Directory/File Not Found!!");
+			} else {
+				return new MsgWrapper(args[1],destPaths,true);
+			}
+
+		} catch (Exception e) {
+			throw new IMException("Directory/File Not Found!!");
+		}
+	}
+
+	/**
+	 * Generate the reply string based on the message.
+	 * 
+	 * Find Command:
+	 * 		Return the URLs of all find FilePath
+	 * LS Command:
+	 * 		Multiple Files/Dirs - return the name of each FilePath
+	 * 		Single Directory    - list the files/dirs in it
+	 * 		Single File         - Content of short file
+	 * 							- URL of long file 
+	 * 
+	 * @param msg keeps all information to generate the reply string
+	 * @return
+	 */
+	private String handler(MsgWrapper msg) {
+		
+		Map<FilePath,String> destPaths = msg.getDestPaths();
+		StringBuilder res = new StringBuilder();
+		
+		// Find Command
+		if ( msg.isFindFile() ) {	
+			res.append("Files Found:\n");
+			
+			for ( Entry<FilePath, String> entry : destPaths.entrySet() ) {
+				res.append( getBaseURL() + "job/" + msg.getProjectName() + "/ws" + entry.getValue().replaceAll("^/workspace","") +"\n");
+			}
+			return res.toString();
+		}
+		// List Command
+		try {
+			if ( destPaths.size() > 1) {
+				// Multiple files/directories available
+				res.append("Available Directory/File Name:\n");
+				for ( Entry<FilePath, String> entry : destPaths.entrySet() ) {
+					res.append( file2Str(entry.getKey()) );
+				}
+				return res.toString();
+			} else { 
+				// Only One File/Directory
+				FilePath destination = null;
+				for ( FilePath temp : destPaths.keySet() ) {
+					destination = temp;
+					break;
+				}
+				
+				// Directory
+				if (destination.isDirectory()) {
+					List<FilePath> subDirs = destination.list();
+					List<String> dirsName = new ArrayList<>();
+					for (FilePath file : subDirs) {
+						dirsName.add(file2Str(file));
+					}
+					Collections.sort(dirsName);
+					for ( String name : dirsName ) {
+						res.append(name);
+					}
+					return res.toString();
+				}
+				// File
+				else {
+					// Return the content of the short file
+					if (destination.length() < 500) {
+						BufferedReader in = new BufferedReader(new InputStreamReader(destination.read()));
+						String line = null;
+
+						while ((line = in.readLine()) != null) {
+							res.append(line + "\n");
+						}
+						return res.toString();
+					}
+					// Return the URL of the long file
+					else {
+						String temp = "job/" + msg.getProjectName() + "/ws/" + destPaths.get(destination) +"\n";
+						return getBaseURL() + temp.replaceAll("//", "/");
+					}
+				}
+			}
+		} catch (Exception e) {
+			return "Cannot Open Directory/File !!";
+		}
+
 	}
 
 	/*
@@ -304,6 +261,14 @@ public class OpenCommand extends AbstractTextSendingCommand {
 	/* 
 	 * Utility Methods
 	 * 
+	 */
+	/**
+	 * Within a given root directory, find all files whose name are started with "name".
+	 * 
+	 * @param root Object represents the root directory
+	 * @param name File to search
+	 * @param parentPath The path to the root directory
+	 * @return A set of all found files and their absolute paths
 	 */
 	private Map<FilePath,String> traverseFilePath(FilePath root, String name, String parentPath){
 		Map<FilePath,String> destPaths = new HashMap<>();
@@ -359,6 +324,43 @@ public class OpenCommand extends AbstractTextSendingCommand {
 			return "[" + name + "] ";
 		} else {
 			return name + " ";
+		}
+	}
+	
+	/**
+	 * A inner nested helper class for OpenCommand.
+	 * The class is simply used for transfer data:
+	 * 		Project Name
+	 * 		All Valid FilePath objects
+	 * 		A flag indicating whether the command is "ls" or "find"
+	 * 
+	 * 
+	 * The parseMessage() method is used to convert the original message into a MsgWrapper instance.
+	 * The handler() method will use MsgWrapper to generate the final reply string.
+	 * 
+	 * @author Zehao
+	 *
+	 */
+	private class MsgWrapper {
+		private String projectName;
+		private boolean isFindFile;
+		private Map<FilePath,String> destPaths;
+
+		MsgWrapper(String projectName,Map<FilePath,String> destPaths, boolean isFindFile) {
+			this.projectName = projectName;
+			this.destPaths = destPaths;
+			this.isFindFile = isFindFile;
+		}
+		
+		boolean isFindFile() {
+			return isFindFile;
+		}
+		Map<FilePath,String> getDestPaths(){
+			return destPaths;
+		}
+
+		String getProjectName() {
+			return projectName;
 		}
 	}
 }

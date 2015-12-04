@@ -39,28 +39,34 @@ public class IRCColorizer {
     private static HashMap<String, HashMap<String, String> > userPattern; 
     private static HashMap<String, HashMap<ResultTrend, String> > themes; 
     private static String currentTheme;
+    private static ArrayList<ResultTrend> result;
         
+    /**
+     * static constructor
+     * unserialize userPattern
+     * populate colorMap
+     * load a default user pattern
+     */
     static {
-        // unserialize userPattern
-        // populate colorMap
-        // load a default user pattern
-    	LOGGER.info("----- Reads file -----");
     	readFile("userPattern.ser");
     	createThemes();
     	currentTheme = "THEME1";
     }
     
     /**
-     * creating Themes
+     * creates Themes
      */
     private static void createThemes() {
     	themes = new HashMap<String, HashMap<ResultTrend,String>>();
     	themes.put("THEME1", createDefault());
-    	for(int i = 2; i < 11; i++) {
-    		themes.put("THEME"+i, oneColorTheme());
-    	}
+    	themes.put("THEME2", oneColorTheme("BLUE"));
+    	themes.put("THEME3", theme2());
     }
     
+    /**
+     * creates default theme
+     * @return hashmap for type theme
+     */
     private static HashMap<ResultTrend, String> createDefault() {
     	HashMap<ResultTrend, String> theme = new HashMap<ResultTrend, String>();
     	theme.put(ResultTrend.FIXED, Colors.BOLD + Colors.UNDERLINE + Colors.GREEN);
@@ -75,43 +81,76 @@ public class IRCColorizer {
     	return theme;
     }
     
-    private static String rando(int min, int max) {
-    	int rand = ThreadLocalRandom.current().nextInt(min, max + 1);
-    	return Character.toString((char)rand);
-    }
-    
-    private static HashMap<ResultTrend, String> oneColorTheme() {
+    /**
+     * creates default theme by color to change all result trend text with one color
+     * @param color color string
+     * @return hashmap for type theme
+     */
+    private static HashMap<ResultTrend, String> oneColorTheme(String color) {
     	HashMap<ResultTrend, String> theme = new HashMap<ResultTrend, String>();
-    	theme.put(ResultTrend.FIXED, Colors.BOLD + Colors.UNDERLINE + rando(300,315));
-    	theme.put(ResultTrend.SUCCESS, Colors.BOLD + rando(300,315));
-    	theme.put(ResultTrend.FAILURE, Colors.BOLD + Colors.UNDERLINE + rando(300,315));
-    	theme.put(ResultTrend.STILL_FAILING, Colors.BOLD + Colors.UNDERLINE + rando(300,315));
-    	theme.put(ResultTrend.UNSTABLE, Colors.BOLD + Colors.UNDERLINE + rando(300,315));
-    	theme.put(ResultTrend.STILL_UNSTABLE, Colors.BOLD + rando(300,315));
-    	theme.put(ResultTrend.NOW_UNSTABLE, Colors.BOLD + rando(300,315));
-    	theme.put(ResultTrend.ABORTED, Colors.BOLD + rando(300,315));
+    	String colorString = IRCColors.lookup(color);
+    	theme.put(ResultTrend.FIXED, Colors.BOLD + Colors.UNDERLINE + colorString);
+    	theme.put(ResultTrend.SUCCESS, Colors.BOLD + colorString);
+    	theme.put(ResultTrend.FAILURE, Colors.BOLD + Colors.UNDERLINE + colorString);
+    	theme.put(ResultTrend.STILL_FAILING, Colors.BOLD + colorString);
+    	theme.put(ResultTrend.UNSTABLE, Colors.BOLD + Colors.UNDERLINE + colorString);
+    	theme.put(ResultTrend.STILL_UNSTABLE, Colors.BOLD + colorString);
+    	theme.put(ResultTrend.NOW_UNSTABLE, Colors.BOLD + colorString);
+    	theme.put(ResultTrend.ABORTED, Colors.BOLD + colorString);
     	
     	return theme;
     }
     
-    //clean userPattern by nickname
+    /**
+     * creates default theme 2
+     * @return hashmap for type theme
+     */
+    private static HashMap<ResultTrend, String> theme2() {
+    	HashMap<ResultTrend, String> theme = new HashMap<ResultTrend, String>();
+    	theme.put(ResultTrend.FIXED, Colors.BOLD + Colors.UNDERLINE + Colors.BLUE);
+    	theme.put(ResultTrend.SUCCESS, Colors.BOLD + Colors.BLUE);
+    	theme.put(ResultTrend.FAILURE, Colors.BOLD + Colors.UNDERLINE + Colors.RED);
+    	theme.put(ResultTrend.STILL_FAILING, Colors.BOLD + Colors.RED);
+    	theme.put(ResultTrend.UNSTABLE, Colors.BOLD + Colors.UNDERLINE + Colors.MAGENTA);
+    	theme.put(ResultTrend.STILL_UNSTABLE, Colors.BOLD + Colors.MAGENTA);
+    	theme.put(ResultTrend.NOW_UNSTABLE, Colors.BOLD + Colors.RED);
+    	theme.put(ResultTrend.ABORTED, Colors.BOLD + Colors.BLACK);
+    	
+    	return theme;
+    }
+    
+    /**
+     * clean userPattern by nickname
+     * @param nickname user's nickname
+     */
     public static void cleanUserPattern(String nickname)
 	{
     	userPattern.remove(nickname);
     	currentTheme = "THEME1";
 	}
     
+    /**
+     * changes theme to specific theme
+     * @param theme
+     */
     public static void changeTheme(String theme) {
     	currentTheme = theme;
     }
     
-    // get userPattern size
+    /**
+     * get userPattern size
+     * @return size of userPattern
+     */
     public static int getSize()
 	{
     	return userPattern.size();
 	}
     
-    // get user's Pattern->color size by nickname
+    /**
+     * get user's Pattern->color size by nickname
+     * @param nickname user's nickname
+     * @return size of user pattern related to nickname
+     */
     public static int getSizeByNickName(String nickname)
 	{
     	return userPattern.get(nickname).size();
@@ -183,50 +222,58 @@ public class IRCColorizer {
         writeFile("userPattern.ser");        
     }
     
-    // set the message with user preference if the preference can be retrieved in userPattern
+    /**
+     * set the message with user preference if the preference can be retrieved in userPattern
+     * @param nickname user's nickname
+     * @param message message that is sent by server
+     * @return formatted message
+     */
     private static String user_colorize(String nickname, String message)
     {
+    	if(!userPattern.containsKey(nickname)) {
+        	return message;
+        }
         // get hashmap for userid or create a new one
         HashMap<String, String> user_hash;
-        if(userPattern.containsKey(nickname)){
-            user_hash = userPattern.get(nickname);
-            
-            // replace var
-            String new_text;
+        
+        user_hash = userPattern.get(nickname);
+        
+        // replace var
+        String new_text;
 
-            for(Map.Entry<String, String> user_patterns_iter: user_hash.entrySet()) {
-                // we are getting each pattern 1 at a time
-                String upString = user_patterns_iter.getKey();
-                Pattern up = Pattern.compile(upString);
-                String ucolor = IRCColors.lookup(user_patterns_iter.getValue().trim());
+        for(Map.Entry<String, String> user_patterns_iter: user_hash.entrySet()) {
+            // we are getting each pattern 1 at a time
+            String upString = user_patterns_iter.getKey();
+            Pattern up = Pattern.compile(upString);
+            String ucolor = IRCColors.lookup(user_patterns_iter.getValue().trim());
 
-                // collect all the matches in the group
-                HashSet<String> matches = new HashSet<String>();
-                Matcher m = up.matcher(message);
-                while(m.find()) {
-                    
-                	matches.add(m.group());
-                }
-
-                // for each work in the set of matches
-                // replace will color
-                Iterator<String> matches_iter = matches.iterator();
-                while(matches_iter.hasNext()) {
-                    String text = matches_iter.next();
-                    new_text = ucolor + text + Colors.NORMAL;
-                    message = message.replaceAll(text, new_text);
-                }
+            // collect all the matches in the group
+            HashSet<String> matches = new HashSet<String>();
+            Matcher m = up.matcher(message);
+            while(m.find()) {
+                
+            	matches.add(m.group());
             }
 
-            return message;
-        } else {
-            return message;
+            // for each work in the set of matches
+            // replace will color
+            Iterator<String> matches_iter = matches.iterator();
+            while(matches_iter.hasNext()) {
+                String text = matches_iter.next();
+                new_text = ucolor + text + Colors.NORMAL;
+                message = message.replaceAll(text, new_text);
+            }
         }
+        return message;
     }
 
+    /**
+     * Receives a string and applies colors based on theme colors to specific string
+     * @param line received message
+     * @return message that will be displayed in an IRC chat client
+     */
     private static String colorForBuildResult(String line) {
         for (ResultTrend result : ResultTrend.values()) {
-            
             String keyword = result.getID();
             
             int index = line.indexOf(keyword);
@@ -234,18 +281,6 @@ public class IRCColorizer {
                 final String color;
                 HashMap<ResultTrend, String> temp = themes.get(currentTheme);
                 color = temp.get(result);
-                
-//                switch (result) {
-//                    case FIXED: color = Colors.BOLD + Colors.UNDERLINE + Colors.GREEN; break;
-//                    case SUCCESS: color = Colors.BOLD + Colors.GREEN; break;
-//                    case FAILURE: color = Colors.BOLD + Colors.UNDERLINE + Colors.RED; break;
-//                    case STILL_FAILING: color = Colors.BOLD + Colors.RED; break;
-//                    case UNSTABLE: color = Colors.BOLD + Colors.UNDERLINE + Colors.BROWN; break;
-//                    case STILL_UNSTABLE: color = Colors.BOLD + Colors.BROWN; break;
-//                    case NOW_UNSTABLE: color = Colors.BOLD + Colors.MAGENTA; break;
-//                    case ABORTED: color = Colors.BOLD + Colors.LIGHT_GRAY; break;
-//                    default: return line;
-//                }
                 
                 return line.substring(0, index) + color + keyword + Colors.NORMAL
                         + line.substring(index + keyword.length(), line.length());
@@ -292,7 +327,4 @@ public class IRCColorizer {
     		ex.printStackTrace();
     	}
     }
-    
-    
-
 }

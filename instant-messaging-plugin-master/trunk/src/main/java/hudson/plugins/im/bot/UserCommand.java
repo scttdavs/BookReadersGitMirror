@@ -17,15 +17,14 @@ import hudson.tasks.Mailer;
 import java.util.*;
 
 /**
+ * Display the recent builds issued by a user
+ * 
  * @author BookReaders CS 427 Group UIUC
  */
-
 @Extension
 public class UserCommand extends AbstractSourceQueryCommand {
 	private static final String SYNTAX = " <username>";
 	private static final String HELP = SYNTAX + " - prints builds processed by a Jenkins user";
-
-	// if not work, read file
 	private static int defaultNumber = 5;
 
 	@Override
@@ -33,7 +32,7 @@ public class UserCommand extends AbstractSourceQueryCommand {
 		return Collections.singleton("userHistory");
 	}
 
-	private void changeDefaultNumber(int newDefualtNumber) {
+	private void setDefaultNumber(int newDefualtNumber) {
 		defaultNumber = newDefualtNumber;
 	}
 
@@ -82,24 +81,25 @@ public class UserCommand extends AbstractSourceQueryCommand {
 		}
 	}
 
-	@Override
-	protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {
+	private int getCounter(String[] args) {
 		int counter = 0;
 		if (args.length == 2) {
-			// UserHistory jchen186
 			counter = getDefaultNumber();
 		} else if (args.length == 3) {
-			// UserHistory jchen186 5
 			counter = Integer.parseInt(args[2]);
 		} else if (args.length == 4) {
-			// UserHistory jchen186 default 2
 			if (args[2].equals("default") || args[2].equals("Default")) {
-				changeDefaultNumber(Integer.parseInt(args[3]));
+				setDefaultNumber(Integer.parseInt(args[3]));
 				counter = getDefaultNumber();
 			}
-		} else if (args.length > 4) {
-			// error
 		}
+
+		return counter;
+	}
+
+	@Override
+	protected CharSequence getMessageForJob(Collection<AbstractProject<?, ?>> projects, String[] args) {
+		int counter = getCounter(args);
 
 		// convert projects Collection to ArrayList
 		ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
@@ -121,14 +121,15 @@ public class UserCommand extends AbstractSourceQueryCommand {
 			temp.append("No Builds Found! \n");
 			return temp;
 		}
+		
 		StringBuilder msg = new StringBuilder(builds.size());
-		// for (AbstractBuild<?, ?> abBuild : builds) {
 		for (AbstractBuild<?, ?> abBuild : builds) {
 			if (counter <= 0)
 				break;
 			message(msg, abBuild);
 			counter--;
 		}
+		
 		return msg;
 	}
 

@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 
 
 public class PircListenerTest {
@@ -26,8 +27,8 @@ public class PircListenerTest {
 	//regular recipient parsing
 	@Test
 	public void getRecipientsTest() {
-		ArrayList<String> users = new ArrayList<String>(Arrays.asList("rtfreed2", "sdavis18", "mickeymouse"));
-		ArrayList<String> recipients = PircListener.getRecipients(msg, "");
+		LinkedHashSet<String> users = new LinkedHashSet<String>(Arrays.asList("rtfreed2", "sdavis18", "mickeymouse"));
+		LinkedHashSet<String> recipients = PircListener.getRecipients(msg, "");
 		
 		assertEquals(users, recipients);
 	}
@@ -36,8 +37,8 @@ public class PircListenerTest {
 	//also tests sender versus recipient functionality
 	@Test
 	public void getMultiArgRecipientTest(){
-		ArrayList<String> users = new ArrayList<String>(Arrays.asList("sdavis18", "minniemouse"));
-		ArrayList<String> recipients = PircListener.getRecipients(multiArgMsg, "rtfreed2");
+		LinkedHashSet<String> users = new LinkedHashSet<String>(Arrays.asList("sdavis18", "minniemouse"));
+		LinkedHashSet<String> recipients = PircListener.getRecipients(multiArgMsg, "rtfreed2");
 		assertEquals(users,recipients);
 	}
 	
@@ -54,7 +55,7 @@ public class PircListenerTest {
 	@Test
 	public void getRecipientsNoArgsTest() {
 		String noArgs = "!jenkins 112843667904431 only";
-		ArrayList<String> recipients = PircListener.getRecipients(noArgs, "");
+		LinkedHashSet<String> recipients = PircListener.getRecipients(noArgs, "");
 		
 		assertTrue(recipients.isEmpty());
 	}
@@ -62,7 +63,7 @@ public class PircListenerTest {
 	//parsing recipients with duplicated users
 	@Test
 	public void getRecipientsDeDupeTest() {
-		ArrayList<String> recipients = PircListener.getRecipients(dupedArgs, "");
+		LinkedHashSet<String> recipients = PircListener.getRecipients(dupedArgs, "");
 		
 		assertEquals(recipients.size(), 1);
 	}
@@ -70,7 +71,7 @@ public class PircListenerTest {
 	//parsing recipients with duplicated users AND testing sender vs recipient cross-checking
 	@Test
 	public void getRecipientsDeDupeNoUserTest() {
-		ArrayList<String> recipients = PircListener.getRecipients(dupedArgs, "sdavis18");
+		LinkedHashSet<String> recipients = PircListener.getRecipients(dupedArgs, "sdavis18");
 		
 		assertEquals(recipients.size(), 0);
 	}
